@@ -1,0 +1,4 @@
+# 103062224 defined files to ignore
+document/
+*.o
+CMP
