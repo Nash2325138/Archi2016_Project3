@@ -13,14 +13,14 @@
 FILE *snapshot;
 FILE *error_dump;
 
-Memory* memory;
-InstructionMemery* instructions;
+Memory* data;
+Instructions* instructions;
 Registers* regs;
 unsigned int PC;
 int cycle;
 
 std::vector<unsigned int>* readImage(FILE *);
-void readInput_initialize(void);
+void readInput_initialize(int argc, char const *argv[]);
 void print_snapshot(void);
 int execute(void);
 void destroy_all(void);
@@ -28,15 +28,14 @@ void sumOverflow(int aluValue1, int aluValue2);
 
 int main(int argc, char const *argv[])
 {
-	/*printf("This is the main functuion in simulator.cpp\n");
-	instruction();
-	regfile();
-	memory();*/
-	readInput_initialize();
+	if( argc != 0 && argc != 10 ) {
+		fprintf(stderr, "You need to use 0 argument or 10 arguments\n");
+		exit(EXIT_FAILURE);
+	}
+	readInput_initialize(argc, argv);
 	//for(int i=0 ; i<instructions->size() ; i++)printf("%x ", instructions->at(i));
 	//for(int i=0 ; i<regs->size() ; i++) printf("%x ", regs->at(i));
 	//printf("\n") ;
-
 	cycle = 0;
 	snapshot = fopen("snapshot.rpt", "w");
 	if(snapshot==NULL){
@@ -60,7 +59,7 @@ int main(int argc, char const *argv[])
 	return 0;
 }
 
-void readInput_initialize(void)
+void readInput_initialize(int argc, char const *argv[])
 {
 	FILE *dimage = fopen("dimage.bin", "rb");
 	if( dimage==NULL ) {
@@ -74,8 +73,8 @@ void readInput_initialize(void)
 		sp <<= 8;
 		sp |= readByte;
 	}
-	memory = new Memory(dimage);
-	//for(unsigned int i=0 ; i<memory->size() ; i++)	printf("%x\n", memory->at(i));
+	data = new Memory(dimage);
+	//for(unsigned int i=0 ; i<data->size() ; i++)	printf("%x\n", data->at(i));
 
 	
 	FILE *iimage = fopen("iimage.bin", "rb");
@@ -89,7 +88,7 @@ void readInput_initialize(void)
 		PC <<= 8;
 		PC |= readByte;
 	}
-	instructions = new InstructionMemery(PC, iimage);
+	instructions = new Instructions(PC, iimage, argc, argv);
 	//for(unsigned int i=0 ; i<instructions->size() ; i++)	printf("%x\n", instructions->at(i));
 
 	regs = new Registers(sp);
@@ -101,7 +100,7 @@ int execute(void)
 {
 	int toReturn = 0;
 	if(cycle==DEBUG_CYCLE) printf("PC==%d, ", PC);
-	unsigned int inst = instructions->at(PC/4);
+	unsigned int inst = instructions->disk.at(PC/4);
 	PC += 4;
 	//printf("inst==%x  ", inst);
 	unsigned char opcode = (unsigned char) (inst >> 26);		//warning: unsigned char has 8 bits
@@ -248,7 +247,7 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 
-				regs->at(rt) = memory->at( location/4 );
+				regs->at(rt) = data->at( location/4 );
 				break;
 
 			case 0x21:	//lh
@@ -263,8 +262,8 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 
-				if(location%4==0) halfLoaded = (signed short) ( (memory->at(location/4)) >> 16);
-				else if(location%2==0) halfLoaded = (signed short) ( (memory->at(location/4)) & 0x0000ffff );
+				if(location%4==0) halfLoaded = (signed short) ( (data->at(location/4)) >> 16);
+				else if(location%2==0) halfLoaded = (signed short) ( (data->at(location/4)) & 0x0000ffff );
 				regs->at(rt) = (signed short)halfLoaded;		// <-------- this line is very important!!!
 				break;
 
@@ -280,8 +279,8 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 
-				if(location%4==0) halfLoaded = (unsigned short) ( ((unsigned int)(memory->at(location/4))) >> 16);
-				else if(location%2==0) halfLoaded = (unsigned short) ( (memory->at(location/4)) & 0x0000ffff );
+				if(location%4==0) halfLoaded = (unsigned short) ( ((unsigned int)(data->at(location/4))) >> 16);
+				else if(location%2==0) halfLoaded = (unsigned short) ( (data->at(location/4)) & 0x0000ffff );
 				regs->at(rt) = (unsigned short)halfLoaded;
 				break;
 
@@ -293,11 +292,10 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 
-				byteLoaded = (signed char) ( ((unsigned int)(memory->at(location/4))) >> (
-																													(location%4==0) ? 24 :
-																													(location%4==1) ? 16 :
-																													(location%4==2) ? 8  :
-																													(location%4==3) ? 0 : 0) ) & 0x000000ff; 
+				byteLoaded = (signed char) ( ((unsigned int)(data->at(location/4))) >> ((location%4==0) ? 24 :
+																						(location%4==1) ? 16 :
+																						(location%4==2) ? 8  :
+																						(location%4==3) ? 0 : 0) ) & 0x000000ff; 
 
 				regs->at(rt) = (signed char)byteLoaded;
 				break;
@@ -310,11 +308,10 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 
-				byteLoaded = (unsigned char) (((unsigned int)(memory->at(location/4))) >> (
-																													(location%4==0) ? 24 :
-																													(location%4==1) ? 16 :
-																													(location%4==2) ? 8  :
-																													(location%4==3) ? 0 : 0) ) & 0x000000ff; 
+				byteLoaded = (unsigned char) (((unsigned int)(data->at(location/4))) >> (	(location%4==0) ? 24 :
+																							(location%4==1) ? 16 :
+																							(location%4==2) ? 8  :
+																							(location%4==3) ? 0 : 0) ) & 0x000000ff; 
 
 				regs->at(rt) = (unsigned char)byteLoaded;
 				break;
@@ -330,7 +327,7 @@ int execute(void)
 					toReturn = -1;
 				}
 				if(toReturn!=0) return toReturn;
-				memory->at(location/4) = regs->at(rt);
+				data->at(location/4) = regs->at(rt);
 				break;
 
 			case 0x29:	//sh
@@ -345,12 +342,12 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 				
-				memory->at(location/4) &= (	(location%4==0) ? 0x0000ffff :
-																		(location%4==2) ? 0xffff0000 : 0xffff0000 );
+				data->at(location/4) &= (	(location%4==0) ? 0x0000ffff :
+											(location%4==2) ? 0xffff0000 : 0xffff0000 );
 				tempValue = regs->at(rt) & 0x0000ffff;
 				tempValue <<= (	(location%4==0) ? 16 :
-												(location%4==2) ? 0  : 0 );
-				memory->at(location/4) |= tempValue;
+								(location%4==2) ? 0  : 0 );
+				data->at(location/4) |= tempValue;
 				break;
 
 			case 0x28:	//sb
@@ -361,16 +358,16 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 				
-				memory->at(location/4) &= (	(location%4==0) ? 0x00ffffff :
-																		(location%4==1) ? 0xff00ffff :
-																		(location%4==2) ? 0xffff00ff :
-																		(location%4==3) ? 0xffffff00 : 0xffffff00 );
+				data->at(location/4) &= (	(location%4==0) ? 0x00ffffff :
+											(location%4==1) ? 0xff00ffff :
+											(location%4==2) ? 0xffff00ff :
+											(location%4==3) ? 0xffffff00 : 0xffffff00 );
 				tempValue = regs->at(rt) & 0x000000ff;
 				tempValue <<= (	(location%4==0) ? 24 :
-												(location%4==1) ? 16 :
-												(location%4==2) ? 8  :
-												(location%4==3) ? 0  : 0 );
-				memory->at(location/4) |= tempValue;
+								(location%4==1) ? 16 :
+								(location%4==2) ? 8  :
+								(location%4==3) ? 0  : 0 );
+				data->at(location/4) |= tempValue;
 				break;
 
 			case 0x0F:	//lui 
@@ -462,7 +459,7 @@ void print_snapshot(void)
 
 void destroy_all(void)
 {
-	delete memory;
+	delete data;
 	delete instructions;
 	delete regs;
 
