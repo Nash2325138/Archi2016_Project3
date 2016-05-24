@@ -32,7 +32,7 @@ typedef struct TLBEntry {
 	bool dirty;
 	bool access;
 	unsigned int tag;
-	unsigned int physicalAddress; 	// at most 10 bit will be use
+	unsigned int physicalAddress; 	// at most 10 bit will be used
 	TLBEntry() {
 		valid = dirty = access = false;
 		tag = physicalAddress = 0;
@@ -58,7 +58,15 @@ public:
 	int pageSize;
 	int cacheSize;
 	int blockSize;
-	int associative;
+	int associative;	// for cache, and TLB will always be fully-associative
+
+	int pageOffsetWidth;
+	int TLB_indexWidth;
+	int TLB_tagWidth;
+
+	int blockOffsetWidth;
+	int cache_indexWidth;
+	int cache_tagWidth;
 
 	std::vector<TLBEntry *> TLB;
 	std::vector<PageTableEntry *> pageTable;
@@ -69,6 +77,17 @@ public:
 	Instructions(unsigned int PC, FILE *iimage, int argc, char const *argv[]);
 	~Instructions();
 	//writeTo(unsigned vertualAddress, )
+
+	int TLB_hit;
+	int TLB_miss;
+	int pageTable_hit;
+	int pageTable_miss;
+	int cache_hit;
+	int cache_miss;
+
+	unsigned int getPAddr(unsigned int vAddr) {
+
+	} 
 
 private:
 	int log2(unsigned int target);
