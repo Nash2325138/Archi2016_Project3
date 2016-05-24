@@ -62,9 +62,6 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 		TLB[i] = new TLBEntry();
 	}
 	pageOffsetWidth = this->log2(pageSize);
-	TLB_indexWidth = this->log2(TLBSize);
-	TLB_tagWidth = 32 - pageOffsetWidth - TLB_indexWidth;
-
 
 	int cacheEntryNum = cacheSize / blockSize;
 	cache.resize(cacheEntryNum);
@@ -79,6 +76,8 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 	cache_indexWidth = this->log2(cacheEntryNum);
 	cache_tagWidth = 32 - blockOffsetWidth - cache_indexWidth;
 
+
+	TLB_hit = TLB_miss = pageTable_hit = pageTable_miss = cache_hit = cache_miss = 0;
 }
 
 

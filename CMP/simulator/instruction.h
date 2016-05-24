@@ -10,12 +10,12 @@ void instruction_function(void);
 typedef struct CacheEntry {
 	bool valid;
 	bool MRU;
-	int *tag;
+	unsigned int *tag;
 	int *content;
 	CacheEntry(int blockSize) {
 		valid = MRU = false;
 		int wordNumPerBlock = blockSize / 4;
-		tag = new int[wordNumPerBlock];
+		tag = new unsigned int[wordNumPerBlock];
 		content = new int[wordNumPerBlock];
 		for(int i=0 ; i<wordNumPerBlock ; i++) {
 			tag[i] = content[i] = 0;
@@ -61,8 +61,6 @@ public:
 	int associative;	// for cache, and TLB will always be fully-associative
 
 	int pageOffsetWidth;
-	int TLB_indexWidth;
-	int TLB_tagWidth;
 
 	int blockOffsetWidth;
 	int cache_indexWidth;
@@ -85,9 +83,7 @@ public:
 	int cache_hit;
 	int cache_miss;
 
-	unsigned int getPAddr(unsigned int vAddr) {
-
-	} 
+	unsigned int getPAddr(unsigned int vAddr);
 
 private:
 	int log2(unsigned int target);
