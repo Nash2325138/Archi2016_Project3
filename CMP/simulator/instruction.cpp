@@ -99,50 +99,57 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 	// Every entry doesn't match tag implies TLB miss.
 	// Then we need to get pAddr from page table.
 	TLB_miss++;
-	if(pageTable.at(tag)->valid) {	// tag == vpn when TLB is fully-associative
-		// if valid, then the data is in memory
-		
+	if(pageTable.at(tag)->valid)	// tag == vpn when TLB is fully-associative
+	{	
+		// if valid, then the data is in memory (pAddr exist)
 		pageTable_hit++;
 		pAddr = (pageTable[tag]->ppn << pageOffsetWidth) | pageOffset;
 		
 		// and we need to do: update TLB
-		std::vector<TLBEntry *>::iterator iter, end;
-		for(iter = TLB.begin() , end = TLB.end() ; iter != end ; iter++) {
-			if( (*iter)->valid == false) {
-				// replace the least indexed invalid entry if exists
-				(*iter)->valid = true;
-				(*iter)->lastUsedCycle = cycle;
-				(*iter)->tag = tag;
-				(*iter)->ppn = pageTable[tag]->ppn;
-				break;
-			}
-		}
-		if(iter == end) {
-			// this "if" implies no invalid entry exists
-			// then find out the LRU entry.
-			int min = TLB.at(0)->lastUsedCycle;
-			int chosen = 0;
-			for(int i=1 , size = TLB.size() ; i<size ; i++) {
-				if( TLB[i]->lastUsedCycle < min) {
-					min = TLB[i]->lastUsedCycle;
-					chosen = i;
-				}
-			}
-
-			// and replace the LRU entry
-			TLBEntry *target = TLB[chosen];
-			target->tag = tag;
-			target->ppn = pageTable[tag]->ppn;
-			target->lastUsedCycle = cycle;
-		}
+		this->updateTLB(tag, pageTable[tag]->ppn, cycle);
 		return pAddr;
 	} 
-	else {
+	else
+	{
 		// if not valid, then the data can only be found in disk
 		pageTable_miss++;
-		 
+		// then need to do: Swap / update PageTable / update TLB
+		
 	}
 }
+
+void Instructions::updateTLB(unsigned int tag, unsigned int ppn, int cycle)
+{
+	std::vector<TLBEntry *>::iterator iter, end;
+	for(iter = TLB.begin() , end = TLB.end() ; iter != end ; iter++) {
+		if( (*iter)->valid == false) {
+			// replace the least indexed invalid entry if exists
+			(*iter)->valid = true;
+			(*iter)->lastUsedCycle = cycle;
+			(*iter)->tag = tag;
+			(*iter)->ppn = ppn;
+			break;
+		}
+	}
+	if(iter == end) {
+		// this "if" implies no invalid entry exists
+		// then find out the LRU entry.
+		int min = TLB.at(0)->lastUsedCycle;
+		int chosen = 0;
+		for(int i=1 , size = TLB.size() ; i<size ; i++) {
+			if( TLB[i]->lastUsedCycle < min) {
+				min = TLB[i]->lastUsedCycle;
+				chosen = i;
+			}
+		}
+		// and replace the LRU entry
+		TLBEntry *target = TLB[chosen];
+		target->tag = tag;
+		target->ppn = ppn;
+		target->lastUsedCycle = cycle;
+	}
+}
+
 
 // only when target is 2 to the power N, N >= 1, can this function give the correct answer
 int Instructions::log2(unsigned int target)

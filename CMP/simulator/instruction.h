@@ -85,6 +85,7 @@ public:
 	int cache_miss;
 
 	unsigned int getPAddr(unsigned int vAddr, int cycle);
+	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
 
 private:
 	int log2(unsigned int target);
