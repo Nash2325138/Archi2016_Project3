@@ -27,6 +27,21 @@ typedef struct CacheEntry {
 	}
 }CacheEntry;
 
+typedef struct MemoryEntry {
+	bool available;
+	int lastUsedCycle;
+	int *content;
+	MemoryEntry(int pageSize) {
+		available = true;
+		// we don't care last used cycle when initialization (all memory are available)
+		int wordsPerPage = pageSize / 4;
+		content = new int[wordsPerPage];
+		for(int i=0 ; i<wordsPerPage ; i++) {
+			content[i] = 0;
+		}
+	}
+}
+
 typedef struct TLBEntry {
 	bool valid;
 	bool dirty;
@@ -71,7 +86,7 @@ public:
 	std::vector<PageTableEntry *> pageTable;
 
 	std::vector<CacheEntry *> cache;
-	std::vector<int> memory;
+	std::vector<MemoryEntry *> memory;
 
 	Instructions(unsigned int PC, FILE *iimage, int argc, char const *argv[]);
 	~Instructions();
@@ -86,6 +101,9 @@ public:
 
 	unsigned int getPAddr(unsigned int vAddr, int cycle);
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
+
+	// return the swapped ppn
+	unsigned int swap_writeBack(unsigned int vAddr);
 
 private:
 	int log2(unsigned int target);

@@ -68,9 +68,9 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 	for(int i=0 ; i<cacheEntryNum ; i++) {
 		cache[i] = new CacheEntry(blockSize);
 	}
-	memory.resize(memorySize);
-	for(int i=0 ; i<memorySize ; i++) {
-		memory[i] = 0;
+	memory.resize(memorySize/pageSize);
+	for(unsigned int i=0, size = memory.size(); i<size ; i++) {
+		memory[i] = new MemoryEntry(pageSize);
 	}
 	blockOffsetWidth = this->log2(blockSize);
 	cache_indexWidth = this->log2(cacheEntryNum);
@@ -114,7 +114,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// if not valid, then the data can only be found in disk
 		pageTable_miss++;
 		// then need to do: Swap / update PageTable / update TLB
-		
+
 	}
 }
 
@@ -150,6 +150,10 @@ void Instructions::updateTLB(unsigned int tag, unsigned int ppn, int cycle)
 	}
 }
 
+unsigned int Instructions::swap_writeBack(unsigned int vAddr)
+{
+	return -1;
+}
 
 // only when target is 2 to the power N, N >= 1, can this function give the correct answer
 int Instructions::log2(unsigned int target)
