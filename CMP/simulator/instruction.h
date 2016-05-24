@@ -31,11 +31,12 @@ typedef struct TLBEntry {
 	bool valid;
 	bool dirty;
 	bool access;
+	int lastUsedCycle;
 	unsigned int tag;
-	unsigned int physicalAddress; 	// at most 10 bit will be used
+	unsigned int ppn; 	// at most 10 bit will be used
 	TLBEntry() {
 		valid = dirty = access = false;
-		tag = physicalAddress = 0;
+		tag = ppn = 0;
 	}
 }TLBEntry;
 
@@ -43,10 +44,10 @@ typedef struct PageTableEntry {
 	bool valid;
 	bool dirty;
 	bool access;
-	unsigned int physicalAddress;
+	unsigned int ppn;
 	PageTableEntry() {
 		valid = dirty = access = false;
-		physicalAddress = 0;
+		ppn = 0;
 	}
 }PageTableEntry;
 
@@ -83,7 +84,7 @@ public:
 	int cache_hit;
 	int cache_miss;
 
-	unsigned int getPAddr(unsigned int vAddr);
+	unsigned int getPAddr(unsigned int vAddr, int cycle);
 
 private:
 	int log2(unsigned int target);
