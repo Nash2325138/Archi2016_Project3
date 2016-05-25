@@ -40,7 +40,7 @@ typedef struct MemoryEntry {
 			content[i] = 0;
 		}
 	}
-}
+}MemoryEntry;
 
 typedef struct TLBEntry {
 	bool valid;
@@ -70,6 +70,7 @@ class Instructions
 {
 public:
 	std::vector<unsigned int> disk;
+	
 	int memorySize;
 	int pageSize;
 	int cacheSize;
@@ -103,6 +104,7 @@ public:
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
 
 	// return the swapped ppn
+	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);
 
 private:

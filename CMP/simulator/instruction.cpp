@@ -1,4 +1,5 @@
 #include "./instruction.h"
+#include <iterator>
 #include <cstdio>
 
 void instruction_function(void) 
@@ -115,6 +116,9 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		pageTable_miss++;
 		// then need to do: Swap / update PageTable / update TLB
 
+		// Swap
+		
+		return -1;
 	}
 }
 
@@ -152,7 +156,49 @@ void Instructions::updateTLB(unsigned int tag, unsigned int ppn, int cycle)
 
 unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 {
-	return -1;
+	// If memory space is available, place data to the first available page closest to the page #0
+	int i, size;
+	for(i=0 , size = memory.size() ; i < size ; i++) {
+		if(memory[i]->available) {
+			// just place data to available page
+			memory[i]->available = false;
+			unsigned int disk_startAddr;
+			disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
+			for(int j=0 ; j < pageSize >> 2 ; j++) {
+				memory[i]->content[j] = disk[disk_startAddr + j];
+			}
+			break;
+		}
+	}
+	if( i < size ) return i;
+
+	// find the LRU page in memory. Pick the least indexed page to be the victim in case of tie
+	//****  Use "page table" to find the LRU page in memory!! Then we can know the replaced page's disk address  ****//
+	int min = -1;
+	std::vector<PageTableEntry *>::iterator iter, end, chosen;
+	for(iter = chosen = pageTable.begin() , end = pageTable.end() ; iter != end ; iter++) {
+		if( (*iter)->valid == false ) continue;
+		if( min == -1 || memory.at( (*iter)->ppn )->lastUsedCycle < min ) {
+			min = memory.at( (*iter)->ppn )->lastUsedCycle;
+			chosen = iter;
+		}
+	}
+	// write back the LRU page to disk
+	unsigned int disk_startAddr = ( std::distance(pageTable.begin(), chosen) - 1 ) << pageOffsetWidth;
+	for(int j=0, wordNum = pageSize << 2 ; j < wordNum ; j++) {
+		disk.at(disk_startAddr + j) = memory.at( (*chosen)->ppn )->content[j];
+	}
+	// update the replaced vpn's valid bit in page table
+	(*chosen)->valid = false;
+
+	// swap the one we want into memory
+	disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
+	for(int j=0 , wordNum = pageSize << 2 ; j < wordNum ; j++) {
+		memory.at( (*chosen)->ppn )->content[j] = disk[disk_startAddr + j];
+	}
+
+	// return the ppn we just swap into memory
+	return (*chosen)->ppn;
 }
 
 // only when target is 2 to the power N, N >= 1, can this function give the correct answer
