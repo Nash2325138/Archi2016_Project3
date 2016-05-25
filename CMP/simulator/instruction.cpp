@@ -107,7 +107,9 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	// get the content directly from memory and update lastUsedCycle ( a bit tricky )
 	int newContent = memory.at(ppn)->content[pageOffset / 4];
-	memory.at(ppn)->lastUsedCycle = cycle;
+	
+	// According to discussion on ilms, I move memory page's last used cycle from memory entry to page table
+	//memory.at(ppn)->lastUsedCycle = cycle;
 
 	updateCache(pAddr);
 
@@ -140,6 +142,9 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 			TLB_hit++;
 			pAddr = (TLB[i]->ppn << pageOffsetWidth ) | pageOffset;
 			TLB[i]->lastUsedCycle = cycle;
+			
+			// According to discussion on ilms, also update page table's ppn_lastUsedCycle when TLB hit
+			pageTable.at(tag)->ppn_lastUsedCycle = cycle;
 			return pAddr;
 		}
 	}
@@ -151,7 +156,8 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// if valid, then the data is in memory (pAddr exist)
 		pageTable_hit++;
 		pAddr = (pageTable[tag]->ppn << pageOffsetWidth) | pageOffset;
-		
+		pageTable[tag]->ppn_lastUsedCycle = cycle;
+
 		// and we need to do: update TLB
 		this->updateTLB(tag, pageTable[tag]->ppn, cycle);
 		return pAddr;
@@ -164,8 +170,13 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 
 		// Swap
 		unsigned int replaced_ppn = this->swap_writeBack(vAddr);
+
+		// update the swapped-in page in page table
 		pageTable[tag]->valid = true;
 		pageTable[tag]->ppn = replaced_ppn;
+		pageTable[tag]->ppn_lastUsedCycle = cycle;
+
+		// update TLB
 		this->updateTLB(tag, replaced_ppn, cycle);
 		pAddr = (replaced_ppn << pageOffsetWidth) | pageOffset;
 		return pAddr;
@@ -228,8 +239,8 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	std::vector<PageTableEntry *>::iterator iter, end, chosen;
 	for(iter = chosen = pageTable.begin() , end = pageTable.end() ; iter != end ; iter++) {
 		if( (*iter)->valid == false ) continue;
-		if( min == -1 || memory.at( (*iter)->ppn )->lastUsedCycle < min ) {
-			min = memory.at( (*iter)->ppn )->lastUsedCycle;
+		if( min == -1 || (*iter)->ppn_lastUsedCycle < min ) {
+			min = (*iter)->ppn_lastUsedCycle;
 			chosen = iter;
 		}
 	}
@@ -247,6 +258,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	}
 	// update the replaced blocks' valid bit in cache if it's in cache
 	// (those blocks which is in the replaced page)
+	/* may be unnecessary */
 	unsigned int replaced_pageAddr = ( (*chosen)->ppn << pageOffsetWidth );
 	for(int i=0 ; i<cache_setNum ; i++) {
 		for(int j=0 ; j<associative ; j++) {

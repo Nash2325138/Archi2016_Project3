@@ -28,7 +28,6 @@ typedef struct CacheEntry {
 
 typedef struct MemoryEntry {
 	bool available;
-	int lastUsedCycle;
 	int *content;
 	MemoryEntry(int pageSize) {
 		available = true;
@@ -59,6 +58,7 @@ typedef struct PageTableEntry {
 	bool dirty;
 	bool access;
 	unsigned int ppn;
+	int ppn_lastUsedCycle;
 	PageTableEntry() {
 		valid = dirty = access = false;
 		ppn = 0;
