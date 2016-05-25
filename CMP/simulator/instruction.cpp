@@ -74,9 +74,9 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 		memory[i] = new MemoryEntry(pageSize);
 	}
 	blockOffsetWidth = this->log2(blockSize);
-	cache_indexWidth = this->log2(cacheEntryNum);
 	cache_tagWidth = 32 - blockOffsetWidth - cache_indexWidth;
 	cache_setNum = cacheEntryNum / associative;
+	cache_indexWidth = this->log2(cache_setNum);
 
 
 	TLB_hit = TLB_miss = pageTable_hit = pageTable_miss = cache_hit = cache_miss = 0;
@@ -87,8 +87,8 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
 
 	// first find this pAddr in cache
-	unsigned int index = (pAddr >> (32 - cache_indexWidth)) << (32 - cache_indexWidth); // get index of the set
-	unsigned int tag = (pAddr << cache_indexWidth) >> (cache_indexWidth + blockOffsetWidth);
+	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
+	unsigned int tag = pAddr >> (blockOffsetWidth + cache_indexWidth);
 	unsigned int blockOffset = pAddr % blockSize;
 	for(int i=0 ; i<associative ; i++) {
 		CacheEntry *target = cache.at(index * cache_setNum + i);
@@ -166,7 +166,8 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		unsigned int replaced_ppn = this->swap_writeBack(vAddr);
 		pageTable[tag]->valid = true;
 		pageTable[tag]->ppn = replaced_ppn;
-		pAddr = (replaced_ppn << pageOffsetWidth | pageOffset);
+		this->updateTLB(tag, replaced_ppn, cycle);
+		pAddr = (replaced_ppn << pageOffsetWidth) | pageOffset;
 		return pAddr;
 	}
 }
@@ -232,13 +233,36 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 			chosen = iter;
 		}
 	}
-	// write back the LRU page to disk
-	unsigned int disk_startAddr = ( std::distance(pageTable.begin(), chosen) - 1 ) << pageOffsetWidth;
+	// write back the LRU page to disk ( swap out )
+	unsigned int replaced_vpn = std::distance(pageTable.begin(), chosen) - 1;
+	unsigned int disk_startAddr = replaced_vpn << pageOffsetWidth;
 	for(int j=0, wordNum = pageSize << 2 ; j < wordNum ; j++) {
 		disk.at(disk_startAddr + j) = memory.at( (*chosen)->ppn )->content[j];
 	}
 	// update the replaced vpn's valid bit in page table
 	(*chosen)->valid = false;
+	// update the replaced vpn's valid bit in TLB if it's in TLB
+	for(std::vector<TLBEntry *>::iterator iter=TLB.begin(), end = TLB.end() ; iter != end ; iter++) {
+		if((*iter)->tag == replaced_vpn) (*iter)->valid = 0;
+	}
+	// update the replaced blocks' valid bit in cache if it's in cache
+	// (those blocks which is in the replaced page)
+	unsigned int replaced_pageAddr = ( (*chosen)->ppn << pageOffsetWidth );
+	for(int i=0 ; i<cache_setNum ; i++) {
+		for(int j=0 ; j<associative ; j++) {
+			CacheEntry *target = cache.at(i * cache_setNum + j);
+			// rebuild the block's addr
+			unsigned int rebuilt_blockAddr = target->tag << cache_indexWidth;
+			rebuilt_blockAddr |= i; // set id is index of cache
+			rebuilt_blockAddr <<= blockOffsetWidth;
+
+			// determine whether this is block is in the replaced page
+			if( rebuilt_blockAddr / pageSize == replaced_pageAddr ) {
+				// if it is in the replaced page, update its valid bit
+				target->valid = 0;
+			}
+		}
+	}
 
 	// swap the one we want into memory
 	disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
