@@ -38,7 +38,7 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 	int cacheSize;
 	int blockSize;
 	int associative;*/
-	if(argc == 0) {
+	if(argc == 1) {
 		memorySize = 64;
 		pageSize = 8;
 		cacheSize = 16;
@@ -76,16 +76,62 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 	blockOffsetWidth = this->log2(blockSize);
 	cache_indexWidth = this->log2(cacheEntryNum);
 	cache_tagWidth = 32 - blockOffsetWidth - cache_indexWidth;
+	cache_setNum = cacheEntryNum / associative;
 
 
 	TLB_hit = TLB_miss = pageTable_hit = pageTable_miss = cache_hit = cache_miss = 0;
+}
+
+unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
+{
+	unsigned int pAddr = this->getPAddr(vAddr, cycle);
+
+	// first find this pAddr in cache
+	unsigned int index = (pAddr >> (32 - cache_indexWidth)) << (32 - cache_indexWidth); // get index of the set
+	unsigned int tag = (pAddr << cache_indexWidth) >> (cache_indexWidth + blockOffsetWidth);
+	unsigned int blockOffset = pAddr % blockSize;
+	for(int i=0 ; i<associative ; i++) {
+		CacheEntry *target = cache.at(index * cache_setNum + i);
+		if( target->valid == false ) continue;
+		if( target->tag == tag) {
+			cache_hit++;
+			return target->content[blockOffset >> 2];
+		}
+	}
+
+	// No return implies cache miss
+	cache_miss++;
+	// Then we need to find the content in memory
+	unsigned int ppn = pAddr >> pageOffsetWidth;
+	unsigned int pageOffset = pAddr % pageSize;
+
+	// get the content directly from memory and update lastUsedCycle ( a bit tricky )
+	int newContent = memory.at(ppn)->content[pageOffset / 4];
+	memory.at(ppn)->lastUsedCycle = cycle;
+
+	updateCache(pAddr);
+
+	return newContent;
+}
+
+void Instructions::updateCache(unsigned int pAddr)
+{
+	// if there's empty entry in the set, just place data to that entry from memory (with a block of data)
+	// and handle the MRU bit
+
+
+	// if there isn't, find the Bit-Pseudo LRU entry
+
+	// write back the Bit-Pseudo LRU entry to memory
+
+	// place data to the replaced entry and handle MRU bit
 }
 unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 {
 	unsigned int tag = vAddr >> pageOffsetWidth;
 	// BTW, tag == virtual page number when TLB is fully-associative
 	
-	unsigned int pageOffset = ( vAddr << (32 - pageOffsetWidth) ) >> (32 - pageOffsetWidth);
+	unsigned int pageOffset = vAddr % pageSize;
 	unsigned int pAddr;
 	// search tag in fully-associative TLB
 	for(unsigned int i=0 , size = TLB.size() ; i<size ; i++) {
@@ -117,8 +163,11 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// then need to do: Swap / update PageTable / update TLB
 
 		// Swap
-		
-		return -1;
+		unsigned int replaced_ppn = this->swap_writeBack(vAddr);
+		pageTable[tag]->valid = true;
+		pageTable[tag]->ppn = replaced_ppn;
+		pAddr = (replaced_ppn << pageOffsetWidth | pageOffset);
+		return pAddr;
 	}
 }
 
@@ -193,7 +242,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 
 	// swap the one we want into memory
 	disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
-	for(int j=0 , wordNum = pageSize << 2 ; j < wordNum ; j++) {
+	for(int j=0 , wordNum = pageSize >> 2 ; j < wordNum ; j++) {
 		memory.at( (*chosen)->ppn )->content[j] = disk[disk_startAddr + j];
 	}
 

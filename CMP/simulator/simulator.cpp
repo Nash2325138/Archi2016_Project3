@@ -28,7 +28,8 @@ void sumOverflow(int aluValue1, int aluValue2);
 
 int main(int argc, char const *argv[])
 {
-	if( argc != 0 && argc != 10 ) {
+	setbuf(stdout, NULL);
+	if( argc != 1 && argc != 11 ) {
 		fprintf(stderr, "You need to use 0 argument or 10 arguments\n");
 		exit(EXIT_FAILURE);
 	}

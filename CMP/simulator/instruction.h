@@ -10,19 +10,18 @@ void instruction_function(void);
 typedef struct CacheEntry {
 	bool valid;
 	bool MRU;
-	unsigned int *tag;
+	unsigned int tag;
 	int *content;
 	CacheEntry(int blockSize) {
 		valid = MRU = false;
+		tag = 0;
 		int wordNumPerBlock = blockSize / 4;
-		tag = new unsigned int[wordNumPerBlock];
 		content = new int[wordNumPerBlock];
 		for(int i=0 ; i<wordNumPerBlock ; i++) {
-			tag[i] = content[i] = 0;
+			content[i] = 0;
 		}
 	}
 	~CacheEntry() {
-		delete tag;
 		delete content;
 	}
 }CacheEntry;
@@ -82,6 +81,7 @@ public:
 	int blockOffsetWidth;
 	int cache_indexWidth;
 	int cache_tagWidth;
+	int cache_setNum;
 
 	std::vector<TLBEntry *> TLB;
 	std::vector<PageTableEntry *> pageTable;
@@ -100,8 +100,11 @@ public:
 	int cache_hit;
 	int cache_miss;
 
+	unsigned int getDataByVaddr(unsigned int vAddr, int cycle);
 	unsigned int getPAddr(unsigned int vAddr, int cycle);
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
+	// return the new content cache just get from memory
+	void updateCache(unsigned int pAddr);
 
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
