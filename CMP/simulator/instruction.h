@@ -28,6 +28,7 @@ typedef struct CacheEntry {
 
 typedef struct MemoryEntry {
 	bool available;
+	int lastUsedCycle;
 	int *content;
 	MemoryEntry(int pageSize) {
 		available = true;
@@ -58,7 +59,6 @@ typedef struct PageTableEntry {
 	bool dirty;
 	bool access;
 	unsigned int ppn;
-	int ppn_lastUsedCycle;
 	PageTableEntry() {
 		valid = dirty = access = false;
 		ppn = 0;
@@ -104,7 +104,7 @@ public:
 	unsigned int getPAddr(unsigned int vAddr, int cycle);
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
 	// return the new content cache just get from memory
-	void updateCache(unsigned int pAddr);
+	void updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset);
 
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)

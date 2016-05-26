@@ -109,14 +109,15 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 	int newContent = memory.at(ppn)->content[pageOffset / 4];
 	
 	// According to discussion on ilms, I move memory page's last used cycle from memory entry to page table
-	//memory.at(ppn)->lastUsedCycle = cycle;
+	// =___= TA changed his words, now page's last used cycle should be with memory entry....
+	memory.at(ppn)->lastUsedCycle = cycle;
 
-	updateCache(pAddr);
+	updateCache(pAddr, index, tag, blockOffset);
 
 	return newContent;
 }
 
-void Instructions::updateCache(unsigned int pAddr)
+void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset)
 {
 	// if there's empty entry in the set, just place data to that entry from memory (with a block of data)
 	// and handle the MRU bit
@@ -144,7 +145,8 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 			TLB[i]->lastUsedCycle = cycle;
 			
 			// According to discussion on ilms, also update page table's ppn_lastUsedCycle when TLB hit
-			pageTable.at(tag)->ppn_lastUsedCycle = cycle;
+			// =___= TA changed his words, now page's last used cycle should be with memory entry....
+			//pageTable.at(tag)->ppn_lastUsedCycle = cycle;
 			return pAddr;
 		}
 	}
@@ -156,7 +158,9 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// if valid, then the data is in memory (pAddr exist)
 		pageTable_hit++;
 		pAddr = (pageTable[tag]->ppn << pageOffsetWidth) | pageOffset;
-		pageTable[tag]->ppn_lastUsedCycle = cycle;
+
+		// =___= TA changed his words, now page's last used cycle should be with memory entry....
+		//pageTable[tag]->ppn_lastUsedCycle = cycle;
 
 		// and we need to do: update TLB
 		this->updateTLB(tag, pageTable[tag]->ppn, cycle);
@@ -174,7 +178,8 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// update the swapped-in page in page table
 		pageTable[tag]->valid = true;
 		pageTable[tag]->ppn = replaced_ppn;
-		pageTable[tag]->ppn_lastUsedCycle = cycle;
+		// =___= TA changed his words, now page's last used cycle should be with memory entry....
+		//pageTable[tag]->ppn_lastUsedCycle = cycle;
 
 		// update TLB
 		this->updateTLB(tag, replaced_ppn, cycle);
@@ -239,8 +244,8 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	std::vector<PageTableEntry *>::iterator iter, end, chosen;
 	for(iter = chosen = pageTable.begin() , end = pageTable.end() ; iter != end ; iter++) {
 		if( (*iter)->valid == false ) continue;
-		if( min == -1 || (*iter)->ppn_lastUsedCycle < min ) {
-			min = (*iter)->ppn_lastUsedCycle;
+		if( min == -1 || memory.at( (*iter)->ppn )->lastUsedCycle < min ) {
+			min = memory.at( (*iter)->ppn )->lastUsedCycle;
 			chosen = iter;
 		}
 	}
@@ -259,6 +264,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// update the replaced blocks' valid bit in cache if it's in cache
 	// (those blocks which is in the replaced page)
 	/* may be unnecessary */
+	// TA changed his words, now page's last used cycle should be with memory entry, so necessary now
 	unsigned int replaced_pageAddr = ( (*chosen)->ppn << pageOffsetWidth );
 	for(int i=0 ; i<cache_setNum ; i++) {
 		for(int j=0 ; j<associative ; j++) {
