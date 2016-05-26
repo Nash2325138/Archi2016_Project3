@@ -95,6 +95,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 		if( target->valid == false ) continue;
 		if( target->tag == tag) {
 			cache_hit++;
+			target->MRU = true;
 			return target->content[blockOffset >> 2];
 		}
 	}
@@ -120,11 +121,25 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset)
 {
 	// if there's empty entry in the set, just place data to that entry from memory (with a block of data)
-	// and handle the MRU bit
-
+	unsigned int ppn = pAddr >> pageOffsetWidth;
+	unsigned int pageOffset = pAddr % pageSize;
+	unsigned int memory_blockStardAddr = (pageOffset >> blockOffsetWidth) << blockOffsetWidth;
+	for(int i=0 ; i<associative ; i++) {
+		CacheEntry *target = cache.at(index * cache_setNum + i);
+		if( target->valid == false) {
+			target->valid = true;
+			target->tag = tag;
+			// copy data from memory to cache
+			for(int j=0 ; j<blockSize/4 ; j++) {
+				target->content[j] = memory.at(ppn)->content[memory_blockStardAddr + j];
+			}
+			return;
+		}
+	}
 
 	// if there isn't, find the Bit-Pseudo LRU entry
-
+	// and handle the MRU bit
+	
 	// write back the Bit-Pseudo LRU entry to memory
 
 	// place data to the replaced entry and handle MRU bit
@@ -265,7 +280,6 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// (those blocks which is in the replaced page)
 	/* may be unnecessary */
 	// TA changed his words, now page's last used cycle should be with memory entry, so necessary now
-	unsigned int replaced_pageAddr = ( (*chosen)->ppn << pageOffsetWidth );
 	for(int i=0 ; i<cache_setNum ; i++) {
 		for(int j=0 ; j<associative ; j++) {
 			CacheEntry *target = cache.at(i * cache_setNum + j);
@@ -275,7 +289,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 			rebuilt_blockAddr <<= blockOffsetWidth;
 
 			// determine whether this is block is in the replaced page
-			if( rebuilt_blockAddr / pageSize == replaced_pageAddr ) {
+			if( rebuilt_blockAddr / pageSize == (*chosen)->ppn ) {
 				// if it is in the replaced page, update its valid bit
 				target->valid = 0;
 			}
