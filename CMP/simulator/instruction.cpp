@@ -95,13 +95,16 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 {
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
+			if(cycle <= 16) {
+				this->print_cache();
+			}
 	printf(" pAddr:%08X ", pAddr);
 	// first find this pAddr in cache
 	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
 	unsigned int tag = pAddr >> (blockOffsetWidth + cache_indexWidth);
 	unsigned int blockOffset = pAddr % blockSize;
 	for(int i=0 ; i<associative ; i++) {
-		CacheEntry *target = cache.at(index * cache_setNum + i);
+		CacheEntry *target = cache.at(index * associative + i);
 		if( target->valid == false ) continue;
 		if( target->tag == tag) {
 			/* from discussion on ilms, when cache hit, no need to update page's last used cycle */
@@ -142,7 +145,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 	unsigned int pageOffset = pAddr % pageSize;
 	unsigned int memory_blockStartAddr = (pageOffset >> blockOffsetWidth) << blockOffsetWidth;
 	for(int i=0 ; i<associative ; i++) {
-		CacheEntry *target = cache.at(index * cache_setNum + i);
+		CacheEntry *target = cache.at(index * associative + i);
 		if( target->valid == false) {
 			target->valid = true;
 			target->tag = tag;
@@ -156,7 +159,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 
 	// if there isn't, find the Bit-Pseudo LRU entry
 	for (int i=0 ; i<associative ; i++) {
-		CacheEntry *target = cache.at(index * cache_setNum + i);
+		CacheEntry *target = cache.at(index * associative + i);
 		if( target->MRU == false ) {
 			// replace data
 			unsigned int rebuilt_blockAddr = (target->tag << cache_indexWidth) | index;
@@ -179,14 +182,14 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 			target->MRU = true;
 			bool all_MRU_set = true;
 			for(int k=0 ; k<associative ; k++) {
-				if( cache.at(index * cache_setNum + k)->MRU == false ) {
+				if( cache.at(index * associative + k)->MRU == false ) {
 					all_MRU_set = false;
 					break;
 				}
 			}
 			if(all_MRU_set == true) {
 				for(int k=0 ; k<associative ; k++) {
-					cache.at(index * cache_setNum + k)->MRU = false;
+					cache.at(index * associative + k)->MRU = false;
 				}
 			}
 			target->MRU = true;
@@ -391,4 +394,21 @@ void Instructions::print_TLB()
 		}
 	}
 	printf("\n");
+}
+
+void Instructions::print_cache()
+{
+	printf("\n[ cache ]\n");
+	for(int i=0 ; i<cache_setNum ; i++) {
+		printf(" * set %d *\n", i);
+		for(int j=0 ; j<associative ; j++) {
+			CacheEntry *target = cache.at(i * associative + j);
+			printf("	%d: MRU %d, tag %d, content:", j, target->MRU, target->tag); 
+			for(int k=0 ; k<blockSize/4 ; k++) {
+				printf(" %08X => ", target->content[k]);
+				print_dissembled_inst(target->content[k]);
+			}
+			printf("\n");
+		}
+	}
 }

@@ -7,6 +7,10 @@
 
 void instruction_function(void);
 
+
+extern void write_32bits_to_image(FILE *image, unsigned int number);
+extern void print_dissembled_inst(unsigned int inst);
+
 typedef struct CacheEntry {
 	bool valid;
 	bool MRU;
@@ -105,6 +109,7 @@ public:
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
 	void updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset);
 	void print_TLB();
+	void print_cache();
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);
