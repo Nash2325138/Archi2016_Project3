@@ -123,7 +123,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 	// if there's empty entry in the set, just place data to that entry from memory (with a block of data)
 	unsigned int ppn = pAddr >> pageOffsetWidth;
 	unsigned int pageOffset = pAddr % pageSize;
-	unsigned int memory_blockStardAddr = (pageOffset >> blockOffsetWidth) << blockOffsetWidth;
+	unsigned int memory_blockStartAddr = (pageOffset >> blockOffsetWidth) << blockOffsetWidth;
 	for(int i=0 ; i<associative ; i++) {
 		CacheEntry *target = cache.at(index * cache_setNum + i);
 		if( target->valid == false) {
@@ -131,18 +131,52 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 			target->tag = tag;
 			// copy data from memory to cache
 			for(int j=0 ; j<blockSize/4 ; j++) {
-				target->content[j] = memory.at(ppn)->content[memory_blockStardAddr + j];
+				target->content[j] = memory.at(ppn)->content[memory_blockStartAddr + j];
 			}
 			return;
 		}
 	}
 
 	// if there isn't, find the Bit-Pseudo LRU entry
-	// and handle the MRU bit
-	
-	// write back the Bit-Pseudo LRU entry to memory
+	for (int i=0 ; i<associative ; i++) {
+		CacheEntry *target = cache.at(index * cache_setNum + i);
+		if( target->MRU == false ) {
+			// replace data
+			unsigned int rebuilt_blockAddr = (target->tag << cache_indexWidth) | index;
+			rebuilt_blockAddr <<= blockOffsetWidth;
+			unsigned int replaced_memory_blockStartAddr = (rebuilt_blockAddr % pageSize);
+			unsigned int rebuilt_ppn = rebuilt_blockAddr >> pageOffsetWidth;
 
-	// place data to the replaced entry and handle MRU bit
+			// 1. write back replaced-out block
+			for(int j=0 ; j<blockSize/4 ; j++) {
+				memory.at(rebuilt_ppn)->content[replaced_memory_blockStartAddr + j] = target->content[j];
+			}
+
+			// 2. copy replaced-in block
+			for(int j=0 ; j<blockSize/4 ; j++) {
+				target->content[j] = memory.at(ppn)->content[memory_blockStartAddr + j];
+			}
+
+			// 3. update tag and MRU
+			target->tag = tag;
+			target->MRU = true;
+			bool all_MRU_set = true;
+			for(int k=0 ; k<associative ; k++) {
+				if( cache.at(index * cache_setNum + k)->MRU == false ) {
+					all_MRU_set = false;
+					break;
+				}
+			}
+			if(all_MRU_set == true) {
+				for(int k=0 ; k<associative ; k++) {
+					cache.at(index * cache_setNum + k)->MRU = false;
+				}
+			}
+			target->MRU = true;
+
+			break;
+		}
+	}
 }
 unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 {
