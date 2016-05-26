@@ -106,7 +106,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 		if( target->tag == tag) {
 			/* from discussion on ilms, when cache hit, no need to update page's last used cycle */
 			cache_hit++;
-			//printf(" cache_hit ");
+			printf("%15s ", "cache_hit");
 			target->MRU = true;
 			return target->content[blockOffset >> 2];
 		}
@@ -114,13 +114,17 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	// No return implies cache miss
 	cache_miss++;
-	//printf(" cache_miss ");
+	printf("%15s ", "cache_miss");
 	// Then we need to find the content in memory
 	unsigned int ppn = pAddr >> pageOffsetWidth;
 	unsigned int pageOffset = pAddr % pageSize;
 
 	// get the content directly from memory and update lastUsedCycle ( a bit tricky )
 	int newContent = memory.at(ppn)->content[pageOffset / 4];
+	if(memory.at(ppn)->available == true) {
+		printf(" memory entry still available!!??\n");
+		exit(EXIT_FAILURE);
+	}
 	
 	// According to discussion on ilms, I move memory page's last used cycle from memory entry to page table
 	// =___= TA changed his words, now page's last used cycle should be with memory entry....
@@ -239,6 +243,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		// then need to do: Swap / update PageTable / update TLB
 
 		// Swap
+
 		unsigned int replaced_ppn = this->swap_writeBack(vAddr);
 
 		// update the swapped-in page in page table
@@ -296,8 +301,9 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 			memory[i]->available = false;
 			unsigned int disk_startAddr;
 			disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
+			//printf(" disk_startAddr %08X ", disk_startAddr);
 			for(int j=0 ; j < pageSize >> 2 ; j++) {
-				memory[i]->content[j] = disk[disk_startAddr + j];
+				memory[i]->content[j] = disk[ (disk_startAddr >> 2) + j];
 			}
 			break;
 		}
@@ -316,10 +322,10 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 		}
 	}
 	// write back the LRU page to disk ( swap out )
-	unsigned int replaced_vpn = std::distance(pageTable.begin(), chosen) - 1;
+	unsigned int replaced_vpn = std::distance(pageTable.begin(), chosen);
 	unsigned int disk_startAddr = replaced_vpn << pageOffsetWidth;
 	for(int j=0, wordNum = pageSize << 2 ; j < wordNum ; j++) {
-		disk.at(disk_startAddr + j) = memory.at( (*chosen)->ppn )->content[j];
+		disk.at( (disk_startAddr >> 2) + j) = memory.at( (*chosen)->ppn )->content[j];
 	}
 	// update the replaced vpn's valid bit in page table
 	(*chosen)->valid = false;
@@ -333,7 +339,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// TA changed his words, now page's last used cycle should be with memory entry, so necessary now
 	for(int i=0 ; i<cache_setNum ; i++) {
 		for(int j=0 ; j<associative ; j++) {
-			CacheEntry *target = cache.at(i * cache_setNum + j);
+			CacheEntry *target = cache.at(i * associative + j);
 			// rebuild the block's addr
 			unsigned int rebuilt_blockAddr = target->tag << cache_indexWidth;
 			rebuilt_blockAddr |= i; // set id is index of cache
@@ -350,7 +356,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// swap the one we want into memory
 	disk_startAddr = (vAddr >> pageOffsetWidth) << pageOffsetWidth;
 	for(int j=0 , wordNum = pageSize >> 2 ; j < wordNum ; j++) {
-		memory.at( (*chosen)->ppn )->content[j] = disk[disk_startAddr + j];
+		memory.at( (*chosen)->ppn )->content[j] = disk[(disk_startAddr >> 2) + j];
 	}
 
 	// return the ppn we just swap into memory

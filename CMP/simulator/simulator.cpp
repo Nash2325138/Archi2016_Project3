@@ -137,7 +137,7 @@ int execute(void)
 	anotherInst = instructions->getDataByVaddr(PC, cycle);
 	
 	if(true) {
-		printf("    cycle %d: ", cycle);
+		printf("    cycle %3d: ", cycle);
 		print_dissembled_inst(anotherInst);
 		printf(", ");
 		print_dissembled_inst(inst);
@@ -554,6 +554,7 @@ void print_report()
 	fprintf( report, "# hits: %u\n", DPageTable.hitNum );
 	fprintf( report, "# misses: %u\n\n", DPageTable.missNum );
 	*/
+	fclose(report);
 }
 /*
 std::vector<unsigned int>* readImage(FILE *image)
