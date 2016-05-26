@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -22,9 +23,36 @@ int cycle;
 std::vector<unsigned int>* readImage(FILE *);
 void readInput_initialize(int argc, char const *argv[]);
 void print_snapshot(void);
+void print_report(void);
 int execute(void);
 void destroy_all(void);
 void sumOverflow(int aluValue1, int aluValue2);
+
+void write_32bits_to_image(FILE *image, unsigned int number)
+{
+	for(int i=0 ; i<4 ; i++){
+		unsigned char temp = (unsigned char)(number >> 24);
+		fwrite(&temp, sizeof(unsigned char), 1, image);
+		number <<= 8;
+	}
+}
+void print_dissembled_inst(unsigned int inst)
+{
+	FILE *tempBin = fopen("inst_temp.bin", "wb");
+	write_32bits_to_image(tempBin, 0);
+	write_32bits_to_image(tempBin, 1);
+	write_32bits_to_image(tempBin, inst);
+	fclose(tempBin);
+
+	system("../liitle-bird-assembler/assembler -d inst_temp.bin -o inst_temp_dissembled.txt -nolabel");
+	
+	FILE *tempTxt = fopen("inst_temp_dissembled.txt", "r");
+	char str[200];
+	fgets(str, sizeof str, tempTxt);
+	str[strlen(str)-1] = '\0';
+	printf("%15s", str);
+	fclose(tempTxt);
+}
 
 int main(int argc, char const *argv[])
 {
@@ -55,6 +83,7 @@ int main(int argc, char const *argv[])
 		cycle++;
 	}while (execute() != -1 && cycle < 510000);
 	
+	print_report();
 
 	destroy_all();
 	return 0;
@@ -101,7 +130,21 @@ int execute(void)
 {
 	int toReturn = 0;
 	if(cycle==DEBUG_CYCLE) printf("PC==%d, ", PC);
-	unsigned int inst = instructions->disk.at(PC/4);
+	unsigned int inst;
+	unsigned int anotherInst;
+	inst = instructions->disk[PC/4];
+	//inst = 
+	anotherInst = instructions->getDataByVaddr(PC, cycle);
+	
+	if(true) {
+		printf("    cycle %d: ", cycle);
+		print_dissembled_inst(anotherInst);
+		printf(", ");
+		print_dissembled_inst(inst);
+		printf("\n");
+		//instructions->print_TLB();
+	}
+
 	PC += 4;
 	//printf("inst==%x  ", inst);
 	unsigned char opcode = (unsigned char) (inst >> 26);		//warning: unsigned char has 8 bits
@@ -481,6 +524,36 @@ void sumOverflow(int aluValue1, int aluValue2)
 	if(aluValue1<0 && aluValue2<0 && aluValue1+aluValue2==0){
 		fprintf(error_dump, "In cycle %d: Number Overflow\n", cycle);
 	}
+}
+
+
+void print_report()
+{
+	FILE *report = fopen("report.rpt", "w");
+	fprintf( report, "ICache :\n");
+	fprintf( report, "# hits: %u\n", instructions->cache_hit );
+	fprintf( report, "# misses: %u\n\n", instructions->cache_miss );
+	/*
+	fprintf( report, "DCache :\n");
+	fprintf( report, "# hits: %u\n", hits );
+	fprintf( report, "# misses: %u\n\n", misses );
+	*/
+	fprintf( report, "ITLB :\n");
+	fprintf( report, "# hits: %u\n", instructions->TLB_hit );
+	fprintf( report, "# misses: %u\n\n", instructions->TLB_miss );
+	/*
+	fprintf( report, "DTLB :\n");
+	fprintf( report, "# hits: %u\n", hits );
+	fprintf( report, "# misses: %u\n\n", misses );
+	*/
+	fprintf( report, "IPageTable :\n");
+	fprintf( report, "# hits: %u\n", instructions->pageTable_hit );
+	fprintf( report, "# misses: %u\n\n", instructions->pageTable_miss );
+	/*
+	fprintf( report, "DPageTable :\n");
+	fprintf( report, "# hits: %u\n", DPageTable.hitNum );
+	fprintf( report, "# misses: %u\n\n", DPageTable.missNum );
+	*/
 }
 /*
 std::vector<unsigned int>* readImage(FILE *image)

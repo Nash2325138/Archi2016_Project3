@@ -78,6 +78,16 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 	cache_setNum = cacheEntryNum / associative;
 	cache_indexWidth = this->log2(cache_setNum);
 
+	printf("pageTableSize: %d\n", pageTableSize);
+	printf("TLBSize: %d\n", TLBSize);
+	printf("pageOffsetWidth: %d\n", pageOffsetWidth);
+	printf("cacheEntryNum : %d\n", cacheEntryNum);
+	printf("blockOffsetWidth : %d\n", blockOffsetWidth);
+	printf("cache_tagWidth : %d\n", cache_tagWidth);
+	printf("cache_setNum : %d\n", cache_setNum);
+	printf("cache_indexWidth : %d\n", cache_indexWidth);
+	printf("\n");
+
 
 	TLB_hit = TLB_miss = pageTable_hit = pageTable_miss = cache_hit = cache_miss = 0;
 }
@@ -85,7 +95,7 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 {
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
-
+	printf(" pAddr:%08X ", pAddr);
 	// first find this pAddr in cache
 	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
 	unsigned int tag = pAddr >> (blockOffsetWidth + cache_indexWidth);
@@ -94,7 +104,9 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 		CacheEntry *target = cache.at(index * cache_setNum + i);
 		if( target->valid == false ) continue;
 		if( target->tag == tag) {
+			/* from discussion on ilms, when cache hit, no need to update page's last used cycle */
 			cache_hit++;
+			//printf(" cache_hit ");
 			target->MRU = true;
 			return target->content[blockOffset >> 2];
 		}
@@ -102,6 +114,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	// No return implies cache miss
 	cache_miss++;
+	//printf(" cache_miss ");
 	// Then we need to find the content in memory
 	unsigned int ppn = pAddr >> pageOffsetWidth;
 	unsigned int pageOffset = pAddr % pageSize;
@@ -180,6 +193,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 }
 unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 {
+	printf(" vAddr:%08X ", vAddr);
 	unsigned int tag = vAddr >> pageOffsetWidth;
 	// BTW, tag == virtual page number when TLB is fully-associative
 	
@@ -190,6 +204,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		if(TLB[i]->valid == false) continue;
 		if(TLB[i]->tag == tag) {
 			TLB_hit++;
+			printf("%15s ", "TLB_hit");
 			pAddr = (TLB[i]->ppn << pageOffsetWidth ) | pageOffset;
 			TLB[i]->lastUsedCycle = cycle;
 			
@@ -206,6 +221,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 	{	
 		// if valid, then the data is in memory (pAddr exist)
 		pageTable_hit++;
+		printf("%15s ", "pageTable_hit");
 		pAddr = (pageTable[tag]->ppn << pageOffsetWidth) | pageOffset;
 
 		// =___= TA changed his words, now page's last used cycle should be with memory entry....
@@ -219,6 +235,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 	{
 		// if not valid, then the data can only be found in disk
 		pageTable_miss++;
+		printf("%15s ", "pageTable_miss");
 		// then need to do: Swap / update PageTable / update TLB
 
 		// Swap
@@ -344,7 +361,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 int Instructions::log2(unsigned int target)
 {
 	int ans;
-	for(ans = -1 ; ans < 32 ; ans ++) {
+	for(ans = -1 ; ans < 32 ; ) {
 		if(target == 0) break;
 		target >>= 1;
 		ans++;
@@ -357,4 +374,15 @@ Instructions::~Instructions()
 	for(unsigned int i=0 ; i<TLB.size() ; i++) delete TLB[i];
 	for(unsigned int i=0 ; i<pageTable.size() ; i++) delete pageTable[i];
 	for(unsigned int i=0 ; i<cache.size() ; i++) delete cache[i];
+}
+
+void Instructions::print_TLB()
+{
+	printf("\n[ TLB ]\n");
+	for(unsigned int i=0 ; i<TLB.size() ; i++) {
+		if(TLB[i]->valid) {
+			printf("----%d: tag %d,  ppn %d, last ued cycle %d\n", i, TLB[i]->tag, TLB[i]->ppn, TLB[i]->lastUsedCycle);
+		}
+	}
+	printf("\n");
 }

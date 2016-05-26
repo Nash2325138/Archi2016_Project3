@@ -103,9 +103,8 @@ public:
 	unsigned int getDataByVaddr(unsigned int vAddr, int cycle);
 	unsigned int getPAddr(unsigned int vAddr, int cycle);
 	void updateTLB(unsigned int tag, unsigned int ppn, int cycle);
-	// return the new content cache just get from memory
 	void updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset);
-
+	void print_TLB();
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);
