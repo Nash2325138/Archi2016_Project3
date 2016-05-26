@@ -94,10 +94,11 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 
 unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 {
+	if(cycle <= 5) {
+		this->print_cache();
+		this->print_memory();
+	}
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
-			if(cycle <= 16) {
-				this->print_cache();
-			}
 	printf(" pAddr:%08X ", pAddr);
 	// first find this pAddr in cache
 	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
@@ -133,7 +134,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 	// =___= TA changed his words, now page's last used cycle should be with memory entry....
 	memory.at(ppn)->lastUsedCycle = cycle;
 
-	updateCache(pAddr, index, tag, blockOffset);
+	this->updateCache(pAddr, index, tag, blockOffset);
 
 	return newContent;
 }
@@ -151,7 +152,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 			target->tag = tag;
 			// copy data from memory to cache
 			for(int j=0 ; j<blockSize/4 ; j++) {
-				target->content[j] = memory.at(ppn)->content[memory_blockStartAddr + j];
+				target->content[j] = memory.at(ppn)->content[ (memory_blockStartAddr >> 2) + j];
 			}
 			return;
 		}
@@ -169,12 +170,12 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 
 			// 1. write back replaced-out block
 			for(int j=0 ; j<blockSize/4 ; j++) {
-				memory.at(rebuilt_ppn)->content[replaced_memory_blockStartAddr + j] = target->content[j];
+				memory.at(rebuilt_ppn)->content[ (replaced_memory_blockStartAddr >> 2) + j] = target->content[j];
 			}
 
 			// 2. copy replaced-in block
 			for(int j=0 ; j<blockSize/4 ; j++) {
-				target->content[j] = memory.at(ppn)->content[memory_blockStartAddr + j];
+				target->content[j] = memory.at(ppn)->content[ (memory_blockStartAddr >> 2) + j];
 			}
 
 			// 3. update tag and MRU
@@ -327,7 +328,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// write back the LRU page to disk ( swap out )
 	unsigned int replaced_vpn = std::distance(pageTable.begin(), chosen);
 	unsigned int disk_startAddr = replaced_vpn << pageOffsetWidth;
-	for(int j=0, wordNum = pageSize << 2 ; j < wordNum ; j++) {
+	for(int j=0, wordNum = pageSize >> 2 ; j < wordNum ; j++) {
 		disk.at( (disk_startAddr >> 2) + j) = memory.at( (*chosen)->ppn )->content[j];
 	}
 	// update the replaced vpn's valid bit in page table
@@ -408,6 +409,19 @@ void Instructions::print_cache()
 				printf(" %08X => ", target->content[k]);
 				print_dissembled_inst(target->content[k]);
 			}
+			printf("\n");
+		}
+	}
+}
+void Instructions::print_memory()
+{
+	printf("\n[ memory ]\n");
+	for(int i=0 , size = memory.size() ; i<size ; i++) {
+		if(memory[i]->available == true) continue;
+		printf("  %d: lastUsedCycle %d, content:\n", i, memory[i]->lastUsedCycle);
+		for(int j=0 ; j<pageSize/4 ; j++) {
+			printf("      %d => ", memory[i]->content[j] );
+			print_dissembled_inst(memory[i]->content[j]);
 			printf("\n");
 		}
 	}

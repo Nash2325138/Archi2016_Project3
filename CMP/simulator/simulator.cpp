@@ -141,7 +141,7 @@ int execute(void)
 		print_dissembled_inst(anotherInst);
 		printf(", ");
 		print_dissembled_inst(inst);
-		printf("\n");
+		printf("\n\n");
 		//instructions->print_TLB();
 	}
 

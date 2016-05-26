@@ -110,6 +110,7 @@ public:
 	void updateCache(unsigned int pAddr, unsigned int index, unsigned int tag, unsigned int blockOffset);
 	void print_TLB();
 	void print_cache();
+	void print_memory();
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);
