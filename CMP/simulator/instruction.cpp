@@ -94,9 +94,9 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 
 unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 {
-	if(cycle <= 5) {
+	if(cycle <= 46) {
 		this->print_cache();
-		this->print_memory();
+		//this->print_memory();
 	}
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
 	printf(" pAddr:%08X ", pAddr);
@@ -111,7 +111,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 			/* from discussion on ilms, when cache hit, no need to update page's last used cycle */
 			cache_hit++;
 			printf("%15s ", "cache_hit");
-			target->MRU = true;
+			setCacheMRU(index, i);
 			return target->content[blockOffset >> 2];
 		}
 	}
@@ -150,6 +150,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 		if( target->valid == false) {
 			target->valid = true;
 			target->tag = tag;
+			setCacheMRU(index, i);
 			// copy data from memory to cache
 			for(int j=0 ; j<blockSize/4 ; j++) {
 				target->content[j] = memory.at(ppn)->content[ (memory_blockStartAddr >> 2) + j];
@@ -162,12 +163,12 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 	for (int i=0 ; i<associative ; i++) {
 		CacheEntry *target = cache.at(index * associative + i);
 		if( target->MRU == false ) {
-			// replace data
 			unsigned int rebuilt_blockAddr = (target->tag << cache_indexWidth) | index;
 			rebuilt_blockAddr <<= blockOffsetWidth;
 			unsigned int replaced_memory_blockStartAddr = (rebuilt_blockAddr % pageSize);
 			unsigned int rebuilt_ppn = rebuilt_blockAddr >> pageOffsetWidth;
 
+			// replace data
 			// 1. write back replaced-out block
 			for(int j=0 ; j<blockSize/4 ; j++) {
 				memory.at(rebuilt_ppn)->content[ (replaced_memory_blockStartAddr >> 2) + j] = target->content[j];
@@ -180,20 +181,7 @@ void Instructions::updateCache(unsigned int pAddr, unsigned int index, unsigned 
 
 			// 3. update tag and MRU
 			target->tag = tag;
-			target->MRU = true;
-			bool all_MRU_set = true;
-			for(int k=0 ; k<associative ; k++) {
-				if( cache.at(index * associative + k)->MRU == false ) {
-					all_MRU_set = false;
-					break;
-				}
-			}
-			if(all_MRU_set == true) {
-				for(int k=0 ; k<associative ; k++) {
-					cache.at(index * associative + k)->MRU = false;
-				}
-			}
-			target->MRU = true;
+			this->setCacheMRU(index, i);
 
 			break;
 		}
@@ -367,6 +355,23 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	return (*chosen)->ppn;
 }
 
+void Instructions::setCacheMRU(unsigned int index, unsigned int posInSet)
+{
+	cache.at(index * associative + posInSet)->MRU = true;
+	for(int j=0 ; j<associative ; j++) {
+		// if there are some entry invalid, return
+		if(cache.at(index * associative + j)->valid == false) return;
+		// if at least one MRU are false, return
+		if(cache.at(index * associative + j)->MRU == false) return;
+	}
+
+	// No return means all MRU in this set are true
+	// flip off all MRU in this set except for the one we want it true
+	for(int j=0 ; j<associative ; j++) {
+		cache.at(index * associative + j)->MRU = false;
+	}
+	cache.at(index * associative + posInSet)->MRU = true;
+}
 // only when target is 2 to the power N, N >= 1, can this function give the correct answer
 int Instructions::log2(unsigned int target)
 {

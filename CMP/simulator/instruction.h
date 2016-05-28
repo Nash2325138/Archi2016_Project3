@@ -114,6 +114,7 @@ public:
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);
+	void setCacheMRU(unsigned int index, unsigned int posInSet);
 
 private:
 	int log2(unsigned int target);
