@@ -1,3 +1,5 @@
+#define debug(fmt, ...) printf(fmt, __VA_ARGS__) 
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -50,7 +52,7 @@ void print_dissembled_inst(unsigned int inst)
 	char str[200];
 	fgets(str, sizeof str, tempTxt);
 	str[strlen(str)-1] = '\0';
-	printf("%15s", str);
+	printf("%-15s", str);
 	fclose(tempTxt);
 }
 
@@ -133,10 +135,9 @@ int execute(void)
 	unsigned int inst;
 	unsigned int anotherInst;
 	inst = instructions->disk[PC/4];
-	//inst = 
 	anotherInst = instructions->getDataByVaddr(PC, cycle);
 	
-	if(true) {
+	if(false) {
 		printf("    cycle %3d: ", cycle);
 		print_dissembled_inst(anotherInst);
 		printf(", ");
