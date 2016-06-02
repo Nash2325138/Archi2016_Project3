@@ -285,10 +285,10 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
 				regs->at(rt) = data->at( location/4 );
-				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x21:	//lh
@@ -301,11 +301,11 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
 				if(location%4==0) halfLoaded = (signed short) ( (data->at(location/4)) >> 16);
 				else if(location%2==0) halfLoaded = (signed short) ( (data->at(location/4)) & 0x0000ffff );
-				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (signed short)halfLoaded;		// <-------- this line is very important!!!
 				break;
 
@@ -319,11 +319,11 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
 				if(location%4==0) halfLoaded = (unsigned short) ( ((unsigned int)(data->at(location/4))) >> 16);
 				else if(location%2==0) halfLoaded = (unsigned short) ( (data->at(location/4)) & 0x0000ffff );
-				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (unsigned short)halfLoaded;
 				break;
 
@@ -333,13 +333,13 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
 				byteLoaded = (signed char) ( ((unsigned int)(data->at(location/4))) >> ((location%4==0) ? 24 :
 																						(location%4==1) ? 16 :
 																						(location%4==2) ? 8  :
 																						(location%4==3) ? 0 : 0) ) & 0x000000ff; 
-				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (signed char)byteLoaded;
 				break;
 
@@ -349,13 +349,13 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
 				byteLoaded = (unsigned char) (((unsigned int)(data->at(location/4))) >> (	(location%4==0) ? 24 :
 																							(location%4==1) ? 16 :
 																							(location%4==2) ? 8  :
 																							(location%4==3) ? 0 : 0) ) & 0x000000ff; 
-				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (unsigned char)byteLoaded;
 				break;
 
@@ -369,9 +369,9 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				data->at(location/4) = regs->at(rt);
-				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x29:	//sh
@@ -384,6 +384,7 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				
 				data->at(location/4) &= (	(location%4==0) ? 0x0000ffff :
@@ -392,7 +393,6 @@ int execute(void)
 				tempValue <<= (	(location%4==0) ? 16 :
 								(location%4==2) ? 0  : 0 );
 				data->at(location/4) |= tempValue;
-				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x28:	//sb
@@ -401,6 +401,7 @@ int execute(void)
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
+				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				
 				data->at(location/4) &= (	(location%4==0) ? 0x00ffffff :
@@ -413,7 +414,6 @@ int execute(void)
 								(location%4==2) ? 8  :
 								(location%4==3) ? 0  : 0 );
 				data->at(location/4) |= tempValue;
-				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x0F:	//lui 

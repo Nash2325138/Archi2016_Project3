@@ -67,11 +67,11 @@ Memory::Memory(FILE *dimage, int argc, char const *argv[]) : std::vector<unsigne
 		blockSize = 4;
 		associative = 1;
 	} else {
-		memorySize = atoi(argv[0]);
-		pageSize = atoi(argv[2]);
-		cacheSize = atoi(argv[4]);
-		blockSize = atoi(argv[5]);
-		associative = atoi(argv[6]);
+		memorySize = atoi(argv[2]);
+		pageSize = atoi(argv[4]);
+		cacheSize = atoi(argv[8]);
+		blockSize = atoi(argv[9]);
+		associative = atoi(argv[10]);
 	}
 
 	int pageTableSize = 1024/pageSize;

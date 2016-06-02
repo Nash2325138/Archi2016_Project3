@@ -52,11 +52,11 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 		blockSize = 4;
 		associative = 4;
 	} else {
-		memorySize = atoi(argv[0]);
-		pageSize = atoi(argv[2]);
-		cacheSize = atoi(argv[4]);
-		blockSize = atoi(argv[5]);
-		associative = atoi(argv[6]);
+		memorySize = atoi(argv[1]);
+		pageSize = atoi(argv[3]);
+		cacheSize = atoi(argv[5]);
+		blockSize = atoi(argv[6]);
+		associative = atoi(argv[7]);
 	}
 
 	int pageTableSize = 1024/pageSize;
