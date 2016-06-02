@@ -105,7 +105,7 @@ void readInput_initialize(int argc, char const *argv[])
 		sp <<= 8;
 		sp |= readByte;
 	}
-	data = new Memory(dimage);
+	data = new Memory(dimage, argc, argv);
 	//for(unsigned int i=0 ; i<data->size() ; i++)	printf("%x\n", data->at(i));
 
 	
@@ -293,6 +293,7 @@ int execute(void)
 				if(toReturn!=0) return toReturn;
 
 				regs->at(rt) = data->at( location/4 );
+				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x21:	//lh
@@ -309,6 +310,7 @@ int execute(void)
 
 				if(location%4==0) halfLoaded = (signed short) ( (data->at(location/4)) >> 16);
 				else if(location%2==0) halfLoaded = (signed short) ( (data->at(location/4)) & 0x0000ffff );
+				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (signed short)halfLoaded;		// <-------- this line is very important!!!
 				break;
 
@@ -326,6 +328,7 @@ int execute(void)
 
 				if(location%4==0) halfLoaded = (unsigned short) ( ((unsigned int)(data->at(location/4))) >> 16);
 				else if(location%2==0) halfLoaded = (unsigned short) ( (data->at(location/4)) & 0x0000ffff );
+				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (unsigned short)halfLoaded;
 				break;
 
@@ -341,7 +344,7 @@ int execute(void)
 																						(location%4==1) ? 16 :
 																						(location%4==2) ? 8  :
 																						(location%4==3) ? 0 : 0) ) & 0x000000ff; 
-
+				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (signed char)byteLoaded;
 				break;
 
@@ -357,7 +360,7 @@ int execute(void)
 																							(location%4==1) ? 16 :
 																							(location%4==2) ? 8  :
 																							(location%4==3) ? 0 : 0) ) & 0x000000ff; 
-
+				data->getDataByVaddr(location, cycle);
 				regs->at(rt) = (unsigned char)byteLoaded;
 				break;
 
@@ -373,6 +376,7 @@ int execute(void)
 				}
 				if(toReturn!=0) return toReturn;
 				data->at(location/4) = regs->at(rt);
+				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x29:	//sh
@@ -393,6 +397,7 @@ int execute(void)
 				tempValue <<= (	(location%4==0) ? 16 :
 								(location%4==2) ? 0  : 0 );
 				data->at(location/4) |= tempValue;
+				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x28:	//sb
@@ -413,6 +418,7 @@ int execute(void)
 								(location%4==2) ? 8  :
 								(location%4==3) ? 0  : 0 );
 				data->at(location/4) |= tempValue;
+				data->getDataByVaddr(location, cycle);
 				break;
 
 			case 0x0F:	//lui 
@@ -534,27 +540,27 @@ void print_report()
 	fprintf( report, "ICache :\n");
 	fprintf( report, "# hits: %u\n", instructions->cache_hit );
 	fprintf( report, "# misses: %u\n\n", instructions->cache_miss );
-	/*
+	
 	fprintf( report, "DCache :\n");
-	fprintf( report, "# hits: %u\n", hits );
-	fprintf( report, "# misses: %u\n\n", misses );
-	*/
+	fprintf( report, "# hits: %u\n", data->cache_hit );
+	fprintf( report, "# misses: %u\n\n", data->cache_miss );
+	
 	fprintf( report, "ITLB :\n");
 	fprintf( report, "# hits: %u\n", instructions->TLB_hit );
 	fprintf( report, "# misses: %u\n\n", instructions->TLB_miss );
-	/*
+	
 	fprintf( report, "DTLB :\n");
-	fprintf( report, "# hits: %u\n", hits );
-	fprintf( report, "# misses: %u\n\n", misses );
-	*/
+	fprintf( report, "# hits: %u\n", data->TLB_hit );
+	fprintf( report, "# misses: %u\n\n", data->TLB_miss );
+	
 	fprintf( report, "IPageTable :\n");
 	fprintf( report, "# hits: %u\n", instructions->pageTable_hit );
 	fprintf( report, "# misses: %u\n\n", instructions->pageTable_miss );
-	/*
+	
 	fprintf( report, "DPageTable :\n");
-	fprintf( report, "# hits: %u\n", DPageTable.hitNum );
-	fprintf( report, "# misses: %u\n\n", DPageTable.missNum );
-	*/
+	fprintf( report, "# hits: %u\n", data->pageTable_hit );
+	fprintf( report, "# misses: %u\n\n", data->pageTable_miss );
+	
 	fclose(report);
 }
 /*

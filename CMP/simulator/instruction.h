@@ -32,7 +32,6 @@ typedef struct CacheEntry {
 
 typedef struct MemoryEntry {
 	bool available;
-	int lastUsedCycle;
 	int *content;
 	MemoryEntry(int pageSize) {
 		available = true;
@@ -63,6 +62,7 @@ typedef struct PageTableEntry {
 	bool dirty;
 	bool access;
 	unsigned int ppn;
+	int ppn_lastUsedCycle;
 	PageTableEntry() {
 		valid = dirty = access = false;
 		ppn = 0;
@@ -111,6 +111,7 @@ public:
 	void print_TLB();
 	void print_cache();
 	void print_memory();
+	void print_pageTable();
 	// return the swapped ppn
 	// (no need to update swapped memory entry's lastUsedCycle, just let cache/memory do this)
 	unsigned int swap_writeBack(unsigned int vAddr);

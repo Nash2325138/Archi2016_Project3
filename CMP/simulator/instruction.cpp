@@ -134,7 +134,7 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 	
 	// According to discussion on ilms, I move memory page's last used cycle from memory entry to page table
 	// =___= TA changed his words, now page's last used cycle should be with memory entry....
-	memory.at(ppn)->lastUsedCycle = cycle;
+	// memory.at(ppn)->lastUsedCycle = cycle;
 
 	this->updateCache(pAddr, index, tag, blockOffset);
 
@@ -208,7 +208,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 			
 			// According to discussion on ilms, also update page table's ppn_lastUsedCycle when TLB hit
 			// =___= TA changed his words, now page's last used cycle should be with memory entry....
-			//pageTable.at(tag)->ppn_lastUsedCycle = cycle;
+			pageTable.at(tag)->ppn_lastUsedCycle = cycle;
 			return pAddr;
 		}
 	}
@@ -223,7 +223,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		pAddr = (pageTable[tag]->ppn << pageOffsetWidth) | pageOffset;
 
 		// =___= TA changed his words, now page's last used cycle should be with memory entry....
-		//pageTable[tag]->ppn_lastUsedCycle = cycle;
+		pageTable[tag]->ppn_lastUsedCycle = cycle;
 
 		// and we need to do: update TLB
 		this->updateTLB(tag, pageTable[tag]->ppn, cycle);
@@ -244,7 +244,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 		pageTable[tag]->valid = true;
 		pageTable[tag]->ppn = replaced_ppn;
 		// =___= TA changed his words, now page's last used cycle should be with memory entry....
-		//pageTable[tag]->ppn_lastUsedCycle = cycle;
+		pageTable[tag]->ppn_lastUsedCycle = cycle;
 
 		// update TLB
 		this->updateTLB(tag, replaced_ppn, cycle);
@@ -310,8 +310,8 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	std::vector<PageTableEntry *>::iterator iter, end, chosen;
 	for(iter = chosen = pageTable.begin() , end = pageTable.end() ; iter != end ; iter++) {
 		if( (*iter)->valid == false ) continue;
-		if( min == -1 || memory.at( (*iter)->ppn )->lastUsedCycle < min ) {
-			min = memory.at( (*iter)->ppn )->lastUsedCycle;
+		if( min == -1 || (*iter)->ppn_lastUsedCycle < min ) {
+			min = (*iter)->ppn_lastUsedCycle;
 			chosen = iter;
 		}
 	}
@@ -331,6 +331,7 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 	// (those blocks which is in the replaced page)
 	/* may be unnecessary */
 	// TA changed his words, now page's last used cycle should be with memory entry, so necessary now
+	//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ igmore this line
 	for(int i=0 ; i<cache_setNum ; i++) {
 		for(int j=0 ; j<associative ; j++) {
 			CacheEntry *target = cache.at(i * associative + j);
@@ -425,11 +426,19 @@ void Instructions::print_memory()
 	printf("\n[ memory ]\n");
 	for(int i=0 , size = memory.size() ; i<size ; i++) {
 		if(memory[i]->available == true) continue;
-		printf("  %d: lastUsedCycle %d, content:\n", i, memory[i]->lastUsedCycle);
+		printf("  %d content:\n", i);
 		for(int j=0 ; j<pageSize/4 ; j++) {
 			printf("      %d => ", memory[i]->content[j] );
-			print_dissembled_inst(memory[i]->content[j]);
+			//print_dissembled_inst(memory[i]->content[j]);
 			printf("\n");
 		}
+	}
+}
+void Instructions::print_pageTable()
+{
+	printf("\n[ page table ]\n");
+	for(int i=0, size = pageTable.size() ; i<size ; i++) {
+		if(pageTable[i]->valid == false) continue;
+		printf("\tVPN: %-3d ---> PPN: %-3d  (lastUsedCycle: %-3d)\n", i, pageTable[i]->ppn, pageTable[i]->ppn_lastUsedCycle);
 	}
 }
