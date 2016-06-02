@@ -1,5 +1,5 @@
-//#define debug(fmt, args...) printf(fmt, ##args) 
-#define debug(fmt, ...)
+#define debug(fmt, args...) printf(fmt, ##args) 
+//#define debug(fmt, ...)
 #include "./memory.h"
 void memory_function(void)
 {
@@ -38,11 +38,11 @@ Memory::Memory(FILE *dimage, int argc, char const *argv[]) : std::vector<unsigne
 	int blockSize;
 	int associative;*/
 	if(argc == 1) {
-		memorySize = 64;
-		pageSize = 8;
+		memorySize = 32;
+		pageSize = 16;
 		cacheSize = 16;
 		blockSize = 4;
-		associative = 4;
+		associative = 1;
 	} else {
 		memorySize = atoi(argv[0]);
 		pageSize = atoi(argv[2]);
@@ -92,12 +92,9 @@ Memory::Memory(FILE *dimage, int argc, char const *argv[]) : std::vector<unsigne
 }
 unsigned int Memory::getDataByVaddr(unsigned int vAddr, int cycle)
 {
-	if(cycle <= 46) {
-		//this->print_cache();
-		//this->print_memory();
-	}
+	debug(" vAddr:%d ", vAddr);
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
-	debug(" pAddr:%08X ", pAddr);
+	debug(" pAddr:%d ", pAddr);
 	// first find this pAddr in cache
 	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
 	unsigned int tag = pAddr >> (blockOffsetWidth + cache_indexWidth);
@@ -134,6 +131,10 @@ unsigned int Memory::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	this->updateCache(pAddr, index, tag, blockOffset);
 
+	if(cycle <= 46) {
+		this->print_cache();
+		//this->print_memory();
+	}
 	return newContent;
 }
 
@@ -187,7 +188,6 @@ void Memory::updateCache(unsigned int pAddr, unsigned int index, unsigned int ta
 }
 unsigned int Memory::getPAddr(unsigned int vAddr, int cycle)
 {
-	debug(" vAddr:%08X ", vAddr);
 	unsigned int tag = vAddr >> pageOffsetWidth;
 	// BTW, tag == virtual page number when TLB is fully-associative
 	
@@ -356,6 +356,10 @@ unsigned int Memory::swap_writeBack(unsigned int vAddr)
 
 void Memory::setCacheMRU(unsigned int index, unsigned int posInSet)
 {
+	if(associative == 1) {
+		cache.at(index)->MRU = false;
+		return;
+	}
 	cache.at(index * associative + posInSet)->MRU = true;
 	for(int j=0 ; j<associative ; j++) {
 		// if there are some entry invalid, return
@@ -405,13 +409,12 @@ void Memory::print_cache()
 {
 	printf("\n[ cache ]\n");
 	for(int i=0 ; i<cache_setNum ; i++) {
-		printf(" * set %d *\n", i);
+		printf(" * set %d *: ", i);
 		for(int j=0 ; j<associative ; j++) {
 			CacheEntry *target = cache.at(i * associative + j);
 			printf("\t%2d: valid %d, tag %3d, MRU %d, content:", j, target->valid, target->tag, target->MRU); 
 			for(int k=0 ; k<blockSize/4 ; k++) {
-				printf(" %08X => ", target->content[k]);
-				print_dissembled_inst(target->content[k]);
+				printf(" %08X", target->content[k]);
 			}
 			printf("\n");
 		}

@@ -360,6 +360,10 @@ unsigned int Instructions::swap_writeBack(unsigned int vAddr)
 
 void Instructions::setCacheMRU(unsigned int index, unsigned int posInSet)
 {
+	if(associative == 1) {
+		cache.at(index)->MRU = false;
+		return;
+	}
 	cache.at(index * associative + posInSet)->MRU = true;
 	for(int j=0 ; j<associative ; j++) {
 		// if there are some entry invalid, return

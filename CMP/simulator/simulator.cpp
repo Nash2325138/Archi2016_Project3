@@ -137,12 +137,12 @@ int execute(void)
 	inst = instructions->disk[PC/4];
 	anotherInst = instructions->getDataByVaddr(PC, cycle);
 	
-	if(false) {
-		printf("    cycle %3d: ", cycle);
+	if(true) {
+		printf("\n\tcycle %3d: ", cycle);
 		print_dissembled_inst(anotherInst);
-		printf(", ");
-		print_dissembled_inst(inst);
-		printf("\n\n");
+		//printf(", ");
+		//print_dissembled_inst(inst);
+		printf("\n");
 		//instructions->print_TLB();
 	}
 
