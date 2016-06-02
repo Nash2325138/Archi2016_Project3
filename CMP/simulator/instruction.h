@@ -11,66 +11,67 @@ void instruction_function(void);
 extern void write_32bits_to_image(FILE *image, unsigned int number);
 extern void print_dissembled_inst(unsigned int inst);
 
-typedef struct CacheEntry {
-	bool valid;
-	bool MRU;
-	unsigned int tag;
-	int *content;
-	CacheEntry(int blockSize) {
-		valid = MRU = false;
-		tag = 0;
-		int wordNumPerBlock = blockSize / 4;
-		content = new int[wordNumPerBlock];
-		for(int i=0 ; i<wordNumPerBlock ; i++) {
-			content[i] = 0;
-		}
-	}
-	~CacheEntry() {
-		delete content;
-	}
-}CacheEntry;
-
-typedef struct MemoryEntry {
-	bool available;
-	int *content;
-	MemoryEntry(int pageSize) {
-		available = true;
-		// we don't care last used cycle when initialization (all memory are available)
-		int wordsPerPage = pageSize / 4;
-		content = new int[wordsPerPage];
-		for(int i=0 ; i<wordsPerPage ; i++) {
-			content[i] = 0;
-		}
-	}
-}MemoryEntry;
-
-typedef struct TLBEntry {
-	bool valid;
-	bool dirty;
-	bool access;
-	int lastUsedCycle;
-	unsigned int tag;
-	unsigned int ppn; 	// at most 10 bit will be used
-	TLBEntry() {
-		valid = dirty = access = false;
-		tag = ppn = 0;
-	}
-}TLBEntry;
-
-typedef struct PageTableEntry {
-	bool valid;
-	bool dirty;
-	bool access;
-	unsigned int ppn;
-	int ppn_lastUsedCycle;
-	PageTableEntry() {
-		valid = dirty = access = false;
-		ppn = 0;
-	}
-}PageTableEntry;
 
 class Instructions
 {
+private:
+	class CacheEntry {
+	public:
+		bool valid;
+		bool MRU;
+		unsigned int tag;
+		int *content;
+		CacheEntry(int blockSize) {
+			valid = MRU = false;
+			tag = 0;
+			int wordNumPerBlock = blockSize / 4;
+			content = new int[wordNumPerBlock];
+			for(int i=0 ; i<wordNumPerBlock ; i++) {
+				content[i] = 0;
+			}
+		}
+		~CacheEntry() {
+			delete content;
+		}
+	};
+
+	class MemoryEntry {
+	public:
+		bool available;
+		int *content;
+		MemoryEntry(int pageSize) {
+			available = true;
+			// we don't care last used cycle when initialization (all memory are available)
+			int wordsPerPage = pageSize / 4;
+			content = new int[wordsPerPage];
+			for(int i=0 ; i<wordsPerPage ; i++) {
+				content[i] = 0;
+			}
+		}
+	};
+
+	class TLBEntry {
+	public:
+		bool valid;
+		int lastUsedCycle;
+		unsigned int tag;
+		unsigned int ppn; 	// at most 10 bit will be used
+		TLBEntry() {
+			valid = false;
+			tag = ppn = 0;
+		}
+	};
+
+	class PageTableEntry {
+	public:
+		bool valid;
+		unsigned int ppn;
+		int ppn_lastUsedCycle;
+		PageTableEntry() {
+			valid = false;
+			ppn = 0;
+		}
+	};
 public:
 	std::vector<unsigned int> disk;
 	

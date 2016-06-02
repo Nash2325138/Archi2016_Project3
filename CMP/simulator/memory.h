@@ -52,13 +52,11 @@ private:
 	class TLBEntry {
 	public:
 		bool valid;
-		bool dirty;
-		bool access;
 		int lastUsedCycle;
 		unsigned int tag;
 		unsigned int ppn; 	// at most 10 bit will be used
 		TLBEntry() {
-			valid = dirty = access = false;
+			valid = false;
 			tag = ppn = 0;
 		}
 	};
@@ -66,12 +64,10 @@ private:
 	class PageTableEntry {
 	public:
 		bool valid;
-		bool dirty;
-		bool access;
 		unsigned int ppn;
 		int ppn_lastUsedCycle;
 		PageTableEntry() {
-			valid = dirty = access = false;
+			valid = false;
 			ppn = 0;
 		}
 	};

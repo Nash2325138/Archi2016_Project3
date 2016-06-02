@@ -17,7 +17,7 @@
 #include "./memory.h"
 
 FILE *snapshot;
-FILE *error_dump;
+//FILE *error_dump;
 
 Memory* data;
 Instructions* instructions;
@@ -76,11 +76,11 @@ int main(int argc, char const *argv[])
 		fputs("snapshot write error", stderr);
 		exit(666);
 	}
-	error_dump = fopen("error_dump.rpt", "w");
+	/*error_dump = fopen("error_dump.rpt", "w");
 	if(error_dump==NULL){
 		fputs("error_dump write error", stderr);
 		exit(666);
-	}
+	}*/
 
 
 	do{
@@ -135,9 +135,8 @@ int execute(void)
 {
 	int toReturn = 0;
 	unsigned int inst;
-	unsigned int anotherInst;
 	inst = instructions->disk[PC/4];
-	anotherInst = instructions->getDataByVaddr(PC, cycle);
+	instructions->getDataByVaddr(PC, cycle);
 	
 #if defined(DEBUG)
 		printf("\n\tcycle %3d: ", cycle);
@@ -158,10 +157,10 @@ int execute(void)
 	unsigned char rd = (unsigned char) ( (inst >> 11) & 0x1f );
 	
 	if(opcode == 0x00){
-		int aluValue1, aluValue2;
+		//int aluValue1, aluValue2;
 		if(funct != 0x08 && rd==0){								// 0x08 means jr
 			if(funct == 0x00 && rt==0 && rd==0 && shamt==0 ) {}		// sll $0, $0, 0 is a NOP
-			else fprintf(error_dump, "In cycle %d: Write $0 Error\n", cycle);
+			//else fprintf(error_dump, "In cycle %d: Write $0 Error\n", cycle);
 			toReturn = 1;
 
 		}
@@ -169,9 +168,9 @@ int execute(void)
 		{
 
 			case 0x20:	// add
-				aluValue1 = (int)regs->at(rs);
+				/*aluValue1 = (int)regs->at(rs);
 				aluValue2 = (int)regs->at(rt);
-				sumOverflow(aluValue1, aluValue2);
+				sumOverflow(aluValue1, aluValue2);*/
 				if(toReturn!=0) return toReturn;
 				regs->at(rd) = ((signed int)regs->at(rs) + (signed int)regs->at(rt)) ;
 				break;
@@ -182,10 +181,10 @@ int execute(void)
 				break;
 
 			case 0x22:	// sub
-				aluValue1 = (int)regs->at(rs);
+				/*aluValue1 = (int)regs->at(rs);
 				aluValue2 = (int)regs->at(rt);
 				aluValue2 = (~(aluValue2))+1;
-				sumOverflow(aluValue1, aluValue2);
+				sumOverflow(aluValue1, aluValue2);*/
 				if(toReturn!=0) return toReturn;
 				
 				regs->at(rd) = (signed int)regs->at(rs) - (signed int)regs->at(rt);
@@ -250,12 +249,12 @@ int execute(void)
 		signed short halfLoaded;
 		signed char byteLoaded;
 		unsigned int tempValue;
-		int aluValue1 = (int)regs->at(rs);
-		int aluValue2 = (signed short)immediate;
+		//int aluValue1 = (int)regs->at(rs);
+		//int aluValue2 = (signed short)immediate;
 		if(rt==0){
 			if(opcode!=0x2B && opcode!=0x29 && opcode!=0x28 && opcode!=0x04 && opcode!=0x05 && opcode!=0x07){
 				if(opcode!=0x02 && opcode!=0x03 && opcode!=0x3F){
-					fprintf(error_dump, "In cycle %d: Write $0 Error\n", cycle);
+					//fprintf(error_dump, "In cycle %d: Write $0 Error\n", cycle);
 					toReturn = 1;
 				}
 			}		
@@ -265,7 +264,7 @@ int execute(void)
 			//printf("immediate==%d\n", immediate);
 			//--------------------------- I type start -----------------------------//
 			case 0x08: 	// addi
-				sumOverflow(aluValue1, aluValue2);
+				//sumOverflow(aluValue1, aluValue2);
 				if(toReturn!=0) return toReturn;
 				regs->at(rt) = regs->at(rs) + ((signed short)immediate);
 				break;
@@ -276,15 +275,15 @@ int execute(void)
 				break;
 
 			case 0x23:	//lw
-				sumOverflow(aluValue1, aluValue2);
-				if ( location >1020 ) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if ( location >1020 ) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
 				if( location % 4 != 0 ){
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
@@ -292,15 +291,15 @@ int execute(void)
 				break;
 
 			case 0x21:	//lh
-				sumOverflow(aluValue1, aluValue2);
-				if( location > 1022) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if( location > 1022) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
 				if( location % 2 != 0){
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
@@ -310,15 +309,15 @@ int execute(void)
 				break;
 
 			case 0x25:	//lhu 
-				sumOverflow(aluValue1, aluValue2);
-				if( location > 1022) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if( location > 1022) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
 				if( location % 2 != 0){
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
@@ -328,11 +327,11 @@ int execute(void)
 				break;
 
 			case 0x20:	//lb 
-				sumOverflow(aluValue1, aluValue2);
-				if( location > 1023) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if( location > 1023) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
@@ -344,11 +343,11 @@ int execute(void)
 				break;
 
 			case 0x24:	//lbu
-				sumOverflow(aluValue1, aluValue2);
-				if( location > 1023 ) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if( location > 1023 ) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 
@@ -360,30 +359,30 @@ int execute(void)
 				break;
 
 			case 0x2B:	//sw
-				sumOverflow(aluValue1, aluValue2);
-				if ( location >1020 ) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if ( location >1020 ) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
 				if( location % 4 != 0 ){
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				data->at(location/4) = regs->at(rt);
 				break;
 
 			case 0x29:	//sh
-				sumOverflow(aluValue1, aluValue2);
-				if ( location >1022 ) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if ( location >1022 ) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
 				}
 				if( location % 2 != 0 ){
 					fprintf(error_dump, "In cycle %d: Misalignment Error\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				
@@ -396,11 +395,11 @@ int execute(void)
 				break;
 
 			case 0x28:	//sb
-				sumOverflow(aluValue1, aluValue2);
-				if ( location >1023 ) {
+				//sumOverflow(aluValue1, aluValue2);
+				/*if ( location >1023 ) {
 					fprintf(error_dump, "In cycle %d: Address Overflow\n", cycle);
 					toReturn = -1;
-				}
+				}*/
 				data->getDataByVaddr(location, cycle);
 				if(toReturn!=0) return toReturn;
 				
@@ -510,11 +509,11 @@ void destroy_all(void)
 	delete regs;
 
 	fclose(snapshot);
-	fclose(error_dump);
+	//fclose(error_dump);
 }
 
 
-
+/*
 void sumOverflow(int aluValue1, int aluValue2)
 {
 	if(aluValue1<=0 && aluValue2<=0 && aluValue1+aluValue2 > 0){
@@ -527,7 +526,7 @@ void sumOverflow(int aluValue1, int aluValue2)
 		fprintf(error_dump, "In cycle %d: Number Overflow\n", cycle);
 	}
 }
-
+*/
 
 void print_report()
 {

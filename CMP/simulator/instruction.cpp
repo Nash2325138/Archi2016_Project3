@@ -101,10 +101,8 @@ Instructions::Instructions(unsigned int PC, FILE *iimage, int argc, char const *
 
 unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 {
-	if(cycle <= 46) {
-		//this->print_cache();
-		//this->print_memory();
-	}
+
+	debug("\nCycle %d", cycle);
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
 	debug(" pAddr:%08X ", pAddr);
 	// first find this pAddr in cache
@@ -143,6 +141,12 @@ unsigned int Instructions::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	this->updateCache(pAddr, index, tag, blockOffset);
 
+#if defined(DEBUG)
+		this->print_cache();
+		//this->print_memory();
+	}
+#endif
+	
 	return newContent;
 }
 
