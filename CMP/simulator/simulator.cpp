@@ -1,4 +1,9 @@
-#define debug(fmt, ...) printf(fmt, __VA_ARGS__) 
+//#define DEBUG
+#if defined(DEBUG)
+#define debug(fmt, args...) printf(fmt, ##args) 
+#else
+#define debug(fmt, args...)
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -10,8 +15,6 @@
 #include "./instruction.h"
 #include "./regfile.h"
 #include "./memory.h"
-
-#define DEBUG_CYCLE 999999
 
 FILE *snapshot;
 FILE *error_dump;
@@ -131,20 +134,19 @@ void readInput_initialize(int argc, char const *argv[])
 int execute(void)
 {
 	int toReturn = 0;
-	if(cycle==DEBUG_CYCLE) printf("PC==%d, ", PC);
 	unsigned int inst;
 	unsigned int anotherInst;
 	inst = instructions->disk[PC/4];
 	anotherInst = instructions->getDataByVaddr(PC, cycle);
 	
-	if(true) {
+#if defined(DEBUG)
 		printf("\n\tcycle %3d: ", cycle);
 		print_dissembled_inst(anotherInst);
 		//printf(", ");
 		//print_dissembled_inst(inst);
-		printf("\n");
+		//printf("\n");
 		//instructions->print_TLB();
-	}
+#endif
 
 	PC += 4;
 	//printf("inst==%x  ", inst);
@@ -154,8 +156,7 @@ int execute(void)
 	unsigned char shamt = (unsigned char) ( (inst >> 6) & 0x1f );
 	unsigned char funct = (unsigned char) (inst & 0x3f);
 	unsigned char rd = (unsigned char) ( (inst >> 11) & 0x1f );
-	if(cycle==DEBUG_CYCLE) printf("cycle==%d, opcode==%02hhx, inst==%08x, funct==%02x\n", cycle, opcode, inst, funct);
-
+	
 	if(opcode == 0x00){
 		int aluValue1, aluValue2;
 		if(funct != 0x08 && rd==0){								// 0x08 means jr
@@ -163,9 +164,6 @@ int execute(void)
 			else fprintf(error_dump, "In cycle %d: Write $0 Error\n", cycle);
 			toReturn = 1;
 
-		}
-		if(cycle==DEBUG_CYCLE){
-			printf("rd==%d, rs==%d, rt==%d, shamt==%d\n\n", rd, rs, rt, shamt);
 		}
 		switch(funct)
 		{
@@ -254,9 +252,6 @@ int execute(void)
 		unsigned int tempValue;
 		int aluValue1 = (int)regs->at(rs);
 		int aluValue2 = (signed short)immediate;
-		if(cycle==DEBUG_CYCLE){
-			printf("rs==%d, rt==%d, immediate==%d\n\n", rs, rt, immediate);
-		}
 		if(rt==0){
 			if(opcode!=0x2B && opcode!=0x29 && opcode!=0x28 && opcode!=0x04 && opcode!=0x05 && opcode!=0x07){
 				if(opcode!=0x02 && opcode!=0x03 && opcode!=0x3F){
@@ -583,3 +578,5 @@ std::vector<unsigned int>* readImage(FILE *image)
 	return input;
 }
 */
+
+#undef DEBUG

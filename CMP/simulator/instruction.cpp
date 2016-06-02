@@ -1,5 +1,10 @@
-//#define debug(fmt, args...) printf(fmt, ##args) 
-#define debug(fmt, ...)
+//#define DEBUG
+#if defined(DEBUG)
+#define debug(fmt, args...) printf(fmt, ##args) 
+#else
+#define debug(fmt, args...)
+#endif
+
 #include "./instruction.h"
 #include <iterator>
 #include <cstdio>
@@ -208,7 +213,7 @@ unsigned int Instructions::getPAddr(unsigned int vAddr, int cycle)
 			
 			// According to discussion on ilms, also update page table's ppn_lastUsedCycle when TLB hit
 			// =___= TA changed his words, now page's last used cycle should be with memory entry....
-			pageTable.at(tag)->ppn_lastUsedCycle = cycle;
+			//pageTable.at(tag)->ppn_lastUsedCycle = cycle;
 			return pAddr;
 		}
 	}
@@ -446,3 +451,5 @@ void Instructions::print_pageTable()
 		printf("\tVPN: %-3d ---> PPN: %-3d  (lastUsedCycle: %-3d)\n", i, pageTable[i]->ppn, pageTable[i]->ppn_lastUsedCycle);
 	}
 }
+
+#undef DEBUG

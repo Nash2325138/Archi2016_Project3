@@ -1,6 +1,29 @@
+//#define DEBUG
+#if defined(DEBUG)
 #define debug(fmt, args...) printf(fmt, ##args) 
-//#define debug(fmt, ...)
+#else
+#define debug(fmt, args...)
+#endif
+
 #include "./memory.h"
+#include <cstring>
+
+const char *int_to_binary(unsigned int x)
+{
+    static char b[32];
+    bool start = false;
+    b[0] = '\0';
+    for (unsigned int z = 2147483648; z > 0; z >>= 1) {
+    	if( (x & z) == z) {
+    		start = true;
+			strcat(b, "1");
+    	} else {
+			if(start == false) continue;
+			strcat(b, "0");
+    	}
+    }
+    return b;
+}
 void memory_function(void)
 {
 	printf("This is memory_function() in memory.cpp\n");
@@ -92,9 +115,9 @@ Memory::Memory(FILE *dimage, int argc, char const *argv[]) : std::vector<unsigne
 }
 unsigned int Memory::getDataByVaddr(unsigned int vAddr, int cycle)
 {
-	debug(" vAddr:%d ", vAddr);
+	debug(" vAddr:%d(%s) ", vAddr, int_to_binary(vAddr));
 	unsigned int pAddr = this->getPAddr(vAddr, cycle);
-	debug(" pAddr:%d ", pAddr);
+	debug(" pAddr:%d(%s) ", pAddr, int_to_binary(pAddr));
 	// first find this pAddr in cache
 	unsigned int index = (pAddr >> blockOffsetWidth) % cache_setNum; // get index of the set
 	unsigned int tag = pAddr >> (blockOffsetWidth + cache_indexWidth);
@@ -131,10 +154,12 @@ unsigned int Memory::getDataByVaddr(unsigned int vAddr, int cycle)
 
 	this->updateCache(pAddr, index, tag, blockOffset);
 
-	if(cycle <= 46) {
-		this->print_cache();
+#if defined(DEBUG)
+		//this->print_cache();
 		//this->print_memory();
-	}
+		this->print_TLB();
+		//this->print_pageTable();
+#endif
 	return newContent;
 }
 
@@ -204,7 +229,7 @@ unsigned int Memory::getPAddr(unsigned int vAddr, int cycle)
 			
 			// According to discussion on ilms, also update page table's ppn_lastUsedCycle when TLB hit
 			// =___= TA changed his words, now page's last used cycle should be with memory entry....
-			pageTable.at(tag)->ppn_lastUsedCycle = cycle;
+			// pageTable.at(tag)->ppn_lastUsedCycle = cycle;
 			return pAddr;
 		}
 	}
@@ -321,7 +346,12 @@ unsigned int Memory::swap_writeBack(unsigned int vAddr)
 	(*chosen)->valid = false;
 	// update the replaced vpn's valid bit in TLB if it's in TLB
 	for(std::vector<TLBEntry *>::iterator iter=TLB.begin(), end = TLB.end() ; iter != end ; iter++) {
-		if((*iter)->tag == replaced_vpn) (*iter)->valid = 0;
+		if((*iter)->valid == 0) continue;
+		if((*iter)->tag == replaced_vpn) {
+			(*iter)->valid = 0;
+			debug(" Clean entry %ld in TLB(tag: %d) ", std::distance(TLB.begin(), iter), replaced_vpn);
+			break;	
+		}
 	}
 	// update the replaced blocks' valid bit in cache if it's in cache
 	// (those blocks which is in the replaced page)
@@ -398,9 +428,8 @@ void Memory::print_TLB()
 {
 	printf("\n[ TLB ]\n");
 	for(unsigned int i=0 ; i<TLB.size() ; i++) {
-		if(TLB[i]->valid) {
-			printf("----%d: tag %d,  ppn %d, last ued cycle %d\n", i, TLB[i]->tag, TLB[i]->ppn, TLB[i]->lastUsedCycle);
-		}
+		if(TLB[i]->valid == false) continue;
+		printf(">\t%3d: tag %-3d, ppn %-3d, last ued cycle %-3d\n", i, TLB[i]->tag, TLB[i]->ppn, TLB[i]->lastUsedCycle);
 	}
 	printf("\n");
 }
@@ -441,3 +470,5 @@ void Memory::print_pageTable()
 		printf("\tVPN: %-3d ---> PPN: %-3d  (lastUsedCycle: %-3d)\n", i, pageTable[i]->ppn, pageTable[i]->ppn_lastUsedCycle);
 	}
 }
+
+#undef DEBUG
